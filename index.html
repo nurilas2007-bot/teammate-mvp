@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <!-- Кодировка: чтобы русские буквы отображались правильно -->
+  <meta charset="UTF-8">
+
+  <!-- Самая важная строка для телефона: страница подстраивается под ширину экрана,
+       а не показывается крошечной копией сайта для компьютера -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Название во вкладке браузера -->
+  <title>Тиммейты MVP</title>
+
+  <!-- Стили: как страница выглядит. Позже вынесем их в отдельный файл styles.css -->
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f7;
+      color: #1d1d1f;
+    }
+    /* Одна колонка по центру: на телефоне во всю ширину,
+       на компьютере выглядит как телефон посередине экрана */
+    main {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+    h1 { font-size: 24px; margin: 0 0 8px; }
+    p  { line-height: 1.5; margin: 8px 0; }
+    .ok { color: #1a7f37; font-weight: 600; }
+    .muted { color: #6e6e73; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="card">
+      <h1>Привет! 👋</h1>
+      <p>Это прототип платформы поиска тиммейтов.</p>
+      <p class="muted">Шаг 0 — проверка, что сайт открывается по ссылке.</p>
+    </div>
+
+    <div class="card">
+      <!-- Сюда JavaScript ниже впишет результат проверки.
+           Если видишь текст «JavaScript не запустился», значит скрипт не сработал -->
+      <p id="js-check">JavaScript не запустился</p>
+      <p id="screen-info" class="muted"></p>
+    </div>
+
+    <p class="muted">Версия: шаг 0</p>
+  </main>
+
+  <!-- JavaScript: «поведение» страницы. Здесь он только проверяет, что работает -->
+  <script>
+    // Находим на странице элемент с id="js-check" и меняем его текст
+    const check = document.getElementById("js-check");
+    check.textContent = "✅ JavaScript работает";
+    check.className = "ok";
+
+    // Показываем ширину экрана, чтобы убедиться, что мобильная вёрстка включилась.
+    // На телефоне должно быть примерно 360–430 пикселей.
+    const info = document.getElementById("screen-info");
+    info.textContent = "Ширина экрана: " + window.innerWidth + " px";
+  </script>
+</body>
+</html>
