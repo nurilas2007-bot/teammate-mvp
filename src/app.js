@@ -366,6 +366,7 @@ function collectProject() {
 // Проверка. Возвращает текст ошибки или пустую строку, если всё в порядке.
 function validateProject(pr) {
   if (!pr.title) return "Напиши название проекта";
+  if (!pr.description || pr.description.length < 20) return "Опиши задачу хотя бы одним предложением — по нему ИИ сравнит опыт кандидатов";
   if (pr.needed_skills.length === 0) return "Выбери хотя бы один навык, которого не хватает команде";
   if (pr.needed_roles.length === 0) return "Выбери хотя бы одну роль";
   if (!pr.deadline) return "Укажи дедлайн";
@@ -429,7 +430,7 @@ function fillProjectForm(pr) {
 // ---------------------------------------------------------------------
 const AVATAR_COLORS = ["#FFB3D9", "#9BD8FF", "#D7FF3A", "#FFFFFF", "#FFD59B"];
 const PART_LABELS = [
-  ["skills", "Навыки"], ["roles", "Роль"], ["time", "Время"],
+  ["skills", "Навыки"], ["experience", "Опыт (ИИ)"], ["time", "Время"], ["roles", "Роль"],
   ["rhythm", "Ритм работы"], ["goal", "Цель"], ["comm", "Связь"]
 ];
 
@@ -450,10 +451,80 @@ function loadCandidates() {
 
 // Последний посчитанный список: нужен карточке кандидата
 let currentRecs = [];
+let aiStatus = null;   // как прошёл последний запрос к ИИ: { ok, ms, model, error }
+
+// ---- ИИ: оценка опыта по примерам задач ----
+// Серверная функция match-experience в Supabase (supabase/functions/...).
+// Ключ ИИ-сервиса хранится там, а не на сайте.
+const AI_URL = SUPABASE_URL + "/functions/v1/match-experience";
+const AI_TIMEOUT_MS = 25000;
+let aiPromise = null;      // запрос, который уже идёт (чтобы не спрашивать ИИ дважды)
+let aiPromiseKey = null;
+
+// Цитата ИИ должна дословно стоять в примерах кандидата — вторая проверка, уже на сайте
+function quoteIsReal(quote, c) {
+  const norm = t => String(t).toLowerCase().replace(/[«»"“”„]/g, "").replace(/ё/g, "е").replace(/\s+/g, " ").trim();
+  const source = norm(c.task_examples.map(e => e.task + " " + e.did).join(" "));
+  return quote.length >= 8 && source.includes(norm(quote));
+}
+
+async function askAi(candidates) {
+  const started = Date.now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+  try {
+    const pr = appState.project;
+    const response = await fetch(AI_URL, {
+      method: "POST",
+      signal: controller.signal,
+      headers: dbHeaders(),
+      body: JSON.stringify({
+        project: { title: pr.title, description: pr.description, needed_skills: pr.needed_skills },
+        candidates: candidates.map(c => ({ id: c.id, examples: c.task_examples }))
+      })
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) throw new Error((data && data.error) || ("код " + response.status));
+    // Оборванный или пустой ответ — это ошибка, а не «ни у кого нет опыта»
+    if (!data || !Array.isArray(data.results)) throw new Error("неполный ответ ИИ");
+    const results = {};
+    for (const r of data.results || []) {
+      const c = candidates.find(x => x.id === r.id);
+      if (!c) continue;
+      const real = r.level > 0 && r.verified !== false && quoteIsReal(r.quote || "", c);
+      results[r.id] = real
+        ? { level: r.level, quote: r.quote, reason: r.reason || "" }
+        : { level: 0, quote: "", reason: "" };
+    }
+    aiStatus = { ok: true, ms: Date.now() - started, model: data.model || null };
+    // Запоминаем ответ для этой версии проекта: подбор не будет «прыгать» при повторном открытии
+    updateState({ ai: { key: aiPromiseKey, results: results } });
+    return results;
+  } catch (e) {
+    console.warn("ИИ недоступен:", e.message);
+    aiStatus = { ok: false, ms: Date.now() - started, error: String(e.message).slice(0, 200) };
+    return null;   // подбор посчитается без ИИ
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function aiResultsFor(candidates) {
+  const key = (appState.projectVersion || 0) + ":" + appState.projectSavedAt;
+  if (appState.ai && appState.ai.key === key) {
+    aiStatus = aiStatus || { ok: true, cached: true };
+    return Promise.resolve(appState.ai.results);
+  }
+  if (aiPromise && aiPromiseKey === key) return aiPromise;
+  aiPromiseKey = key;
+  aiPromise = askAi(candidates).then(r => { if (r === null) aiPromise = null; return r; });
+  return aiPromise;
+}
 
 async function computeRecs() {
   const candidates = await loadCandidates();
-  currentRecs = recommend(candidates, appState.project, appState.profile, appState.sessionId);
+  const ai = await aiResultsFor(eligible(candidates, appState.project));
+  currentRecs = recommend(candidates, appState.project, appState.profile, appState.sessionId, ai);
   return currentRecs;
 }
 
@@ -508,9 +579,16 @@ function recCard(rec, index) {
   card.appendChild(head);
 
   const tags = el("div", "tags");
-  for (const t of rec.hits) tags.appendChild(el("span", "tag hit", t));
+  for (const t of rec.hits) tags.appendChild(el("span", t.startsWith("ИИ:") ? "tag ai" : "tag hit", t));
   for (const t of rec.misses) tags.appendChild(el("span", "tag miss", t));
   card.appendChild(tags);
+
+  // Что нашёл ИИ: дословная цитата из примера кандидата
+  if (rec.ai && rec.ai.level > 0) {
+    const note = el("div", "ai-note");
+    note.append(el("span", "ai-badge", "ИИ"), el("span", "", "«" + rec.ai.quote + "» — " + rec.ai.reason));
+    card.appendChild(note);
+  }
 
   if (rec.shortUnknowns.length) {
     card.appendChild(el("div", "unk", "Неизвестно: " + rec.shortUnknowns.join("; ")));
@@ -522,23 +600,36 @@ function recCard(rec, index) {
   return card;
 }
 
+let recsRun = 0;   // номер последнего запуска: если экран перерисовали ещё раз, старый результат не показываем
+
 async function renderRecs() {
+  const run = ++recsRun;
   const list = $("recs-list");
   list.innerHTML = "";
   showError("recs-error", "");
   $("recs-project").textContent = appState.project.title;
+  $("recs-ai-off").hidden = true;
+  $("recs-empty").hidden = true;
+  $("recs-loading").hidden = false;   // «ИИ читает примеры…»
   try {
     const recs = await computeRecs();
+    if (run !== recsRun) return;
+    list.innerHTML = "";
+    $("recs-loading").hidden = true;
+    $("recs-ai-off").hidden = !(recs.length && recs[0].ai === null);
     recs.forEach((rec, i) => list.appendChild(recCard(rec, i)));
     $("recs-count").textContent = recs.length + " " + plural(recs.length, "кандидат", "кандидата", "кандидатов");
     $("recs-empty").hidden = recs.length > 0;
     $("recs-legend").hidden = recs.length === 0;
     logEvent("recs_viewed", {
       project_version: appState.projectVersion,
-      shown: recs.map(r => ({ id: r.candidate.id, score: r.total }))
+      shown: recs.map(r => ({ id: r.candidate.id, score: r.total, ai_level: r.ai ? r.ai.level : null })),
+      ai: aiStatus
     });
   } catch (e) {
     console.error(e);
+    if (run !== recsRun) return;
+    $("recs-loading").hidden = true;
     showError("recs-error", "Не получилось загрузить кандидатов. Обнови страницу. (" + e.message + ")");
   }
 }
@@ -562,6 +653,20 @@ $("how").addEventListener("toggle", () => {
 
 const DRAFTS_TEXT = { true: "показывает черновики", false: "показывает готовое" };
 
+function renderAiBlock(rec) {
+  const c = rec.candidate;
+  let reason, quote = "";
+  if (rec.ai === null) reason = "ИИ сейчас не ответил, поэтому опыт по примерам задач не оценён.";
+  else if (c.task_examples.length === 0) reason = "Примеров выполненных задач нет — ИИ нечего сравнивать с твоим проектом.";
+  else if (rec.ai.level === 0) reason = "В примерах задач ИИ не нашёл работы, похожей на твой проект.";
+  else {
+    reason = (rec.ai.level === 2 ? "Делал(а) очень похожую работу. " : "Делал(а) похожую работу. ") + rec.ai.reason;
+    quote = "«" + rec.ai.quote + "»";
+  }
+  $("cand-ai-reason").textContent = reason;
+  $("cand-ai-quote").textContent = quote;
+}
+
 async function renderCandidate(id) {
   // Если страницу открыли сразу по ссылке на кандидата — сначала считаем список
   if (!currentRecs.length) {
@@ -582,11 +687,14 @@ async function renderCandidate(id) {
     const row = el("div", "part");
     const track = el("div", "track");
     const fill = el("div", "fill");
-    fill.style.width = Math.round(100 * rec.parts[key] / SCORE_WEIGHTS[key]) + "%";
+    const value = rec.parts[key];   // null — ИИ не отвечал
+    fill.style.width = Math.round(100 * (value || 0) / SCORE_WEIGHTS[key]) + "%";
     track.appendChild(fill);
-    row.append(el("span", "", label), track, el("span", "val", rec.parts[key] + "/" + SCORE_WEIGHTS[key]));
+    row.append(el("span", "", label), track, el("span", "val", (value === null ? "—" : value) + "/" + SCORE_WEIGHTS[key]));
     parts.appendChild(row);
   }
+
+  renderAiBlock(rec);
 
   const examples = $("cand-examples");
   examples.innerHTML = "";
@@ -688,7 +796,8 @@ async function contactClicked(channel) {
     checked_items: $("checklist").querySelectorAll("input:checked").length,
     text_edited: body !== talkDefaultBody,
     is_synthetic: c.is_synthetic === true,
-    score: talkRec.total
+    score: talkRec.total,
+    ai_level: talkRec.ai ? talkRec.ai.level : null
   }, c.id);
 
   if (c.is_synthetic) {
@@ -724,7 +833,8 @@ function askWhy(rec) {
   answerFor = {
     id: c.id,
     score: rec.total,
-    position: currentRecs.findIndex(r => r.candidate.id === c.id) + 1
+    position: currentRecs.findIndex(r => r.candidate.id === c.id) + 1,
+    aiLevel: rec.ai ? rec.ai.level : null
   };
   $("demo-text").textContent = c.name + " — демо-профиль, такого человека нет, поэтому письмо не отправится. " +
     "Твой выбор мы засчитали. Ответь на два коротких вопроса — так мы поймём, работает ли подбор.";
@@ -743,6 +853,7 @@ function saveAnswer(why, missing, skipped) {
     why: why,
     missing: missing,
     score: a.score,
+    ai_level: a.aiLevel,
     position: a.position
   }, a.id);
 }

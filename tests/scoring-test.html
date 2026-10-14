@@ -57,10 +57,10 @@
       const byName = name => recs.find(r => r.candidate.name === name);
       const full = name => scoreCandidate(all.find(c => c.name === name), PROJECT, TESTER);
 
-      // 1. Порядок
-      check("1. Лучшее совпадение — первым",
-        recs[0].candidate.name === "Айгерим" && recs[0].total === 87 && recs[1].candidate.name === "Сабина" && recs[1].total === 73,
-        "Ожидаем: Айгерим 87, затем Сабина 73. Получили: " + recs.slice(0, 2).map(r => r.candidate.name + " " + r.total).join(", "));
+      // 1. Порядок (без ИИ)
+      check("1. Лучшее совпадение — первым (без ИИ)",
+        recs[0].candidate.name === "Айгерим" && recs[0].total === 88 && recs[1].candidate.name === "Сабина" && recs[1].total === 75,
+        "Ожидаем: Айгерим 88, затем Сабина 75. Получили: " + recs.slice(0, 2).map(r => r.candidate.name + " " + r.total).join(", "));
 
       // 2. Фильтр по навыкам
       check("2. Без нужных навыков — не показываем",
@@ -90,6 +90,24 @@
         recs.length <= TOP_N && again.map(r => r.candidate.id).join() === recs.map(r => r.candidate.id).join(),
         "Показано " + recs.length + ". Повторный расчёт дал тот же порядок.");
 
+      // 7. Без ИИ 80 баллов пересчитываются на 100
+      const ai0 = full("Айгерим");
+      const sum0 = Object.values(ai0.parts).reduce((x, y) => x + (y || 0), 0);
+      check("7. Без ИИ — пересчёт с 80 на 100",
+        ai0.parts.experience === null && sum0 === 70 && ai0.total === 88,
+        "У Айгерим 70 из 80 возможных → 70 × 100 / 80 = 87,5 ≈ 88. Получили " + ai0.total + ".");
+
+      // 8. С ИИ: похожий опыт поднимает кандидата
+      const AI = {
+        c01: { level: 2, quote: "Посчитала коэффициенты ликвидности", reason: "Делала финансовый анализ" },
+        c06: { level: 1, quote: "Проверил расчёты команды", reason: "Проверял финансовые расчёты" }
+      };
+      const withAi = recommend(all, PROJECT, TESTER, "test-seed", AI);
+      const names = withAi.map(r => r.candidate.name);
+      const arman = withAi.find(r => r.candidate.name === "Арман");
+      check("8. ИИ нашёл похожий опыт — кандидат поднимается",
+        arman.parts.experience === 10 && names.indexOf("Арман") < names.indexOf("Руслан") && withAi[0].total === 90,
+        "Без ИИ Руслан выше Армана. ИИ нашёл у Армана частично похожий опыт (+10) — теперь порядок: " + names.join(", ") + ".");
       // Вывод
       const box = document.getElementById("cases");
       for (const r of results) {
@@ -113,11 +131,11 @@
         .map(r => {
           const shown = recs.some(x => x.candidate.id === r.candidate.id);
           return "<tr><td>" + r.candidate.name + "</td><td>" + r.total + "</td><td>" +
-            r.parts.skills + "/" + r.parts.roles + "/" + r.parts.time + "/" + r.parts.rhythm + "/" + r.parts.goal + "/" + r.parts.comm +
+            r.parts.skills + "/" + r.parts.time + "/" + r.parts.roles + "/" + r.parts.rhythm + "/" + r.parts.goal + "/" + r.parts.comm +
             "</td><td>" + (shown ? "да" : "—") + "</td></tr>";
         }).join("");
       document.getElementById("table").innerHTML =
-        "<table><tr><th>Кандидат</th><th>Балл</th><th>Навыки/роль/время/ритм/цель/связь</th><th>В выдаче</th></tr>" + rows + "</table>";
+        "<table><tr><th>Кандидат</th><th>Балл</th><th>Навыки/время/роль/ритм/цель/связь (без ИИ)</th><th>В выдаче</th></tr>" + rows + "</table>";
     })
     .catch(e => {
       document.getElementById("summary").textContent = "❌ Не загрузились кандидаты: " + e.message;

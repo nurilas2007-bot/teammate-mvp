@@ -146,8 +146,8 @@ order by e.session_id, e.created_at;
 
 -- ---------------------------------------------------------------------
 -- Запрос 4. Кандидаты: кого открывали и кому «писали», на каком месте
--- в списке они стояли. Если «пишут» только первому — возможно, люди
--- просто доверяют порядку, а не читают профиль.
+-- в списке они стояли и какой опыт у них нашёл ИИ. Если «пишут» только
+-- первому — возможно, люди просто доверяют порядку, а не читают профиль.
 -- ---------------------------------------------------------------------
 with params as (
   select timestamptz '2026-11-23 00:00+05' as test_start,
@@ -164,7 +164,28 @@ select candidate_id as "Кандидат",
        count(distinct session_id) filter (where type = 'candidate_opened') as "Открыли (тестеров)",
        count(distinct session_id) filter (where type = 'contact_clicked')  as "«Написали» (тестеров)",
        round(avg((payload->>'position')::numeric) filter (where type = 'candidate_opened'), 1) as "Среднее место в списке",
-       round(avg((payload->>'score')::numeric) filter (where type = 'candidate_opened'))       as "Средний балл"
+       round(avg((payload->>'score')::numeric) filter (where type = 'candidate_opened'))       as "Средний балл",
+       round(avg((payload->>'ai_level')::numeric) filter (where type = 'contact_clicked'), 1)  as "Опыт по ИИ у выбранных (0–2)"
 from ev
 group by candidate_id
 order by "«Написали» (тестеров)" desc, "Открыли (тестеров)" desc;
+
+
+-- ---------------------------------------------------------------------
+-- Запрос 5. Как работал ИИ: сколько раз ответил, сколько не ответил,
+-- среднее время ответа. Нужно для отчёта и для декларации об ИИ.
+-- ---------------------------------------------------------------------
+with params as (
+  select timestamptz '2026-11-23 00:00+05' as test_start,
+         timestamptz '2026-11-30 23:59+05' as test_end,
+         array[]::uuid[]                   as excluded
+)
+select count(*) filter (where (e.payload->'ai'->>'ok')::boolean)                         as "ИИ ответил",
+       count(*) filter (where (e.payload->'ai'->>'ok')::boolean = false)                 as "ИИ не ответил",
+       round(avg((e.payload->'ai'->>'ms')::numeric) filter (where (e.payload->'ai'->>'ok')::boolean
+             and e.payload->'ai'->>'ms' is not null) / 1000, 1)                          as "Среднее время ответа, сек",
+       string_agg(distinct e.payload->'ai'->>'error', ' | ')                            as "Ошибки"
+from public.events e, params p
+where e.type = 'recs_viewed'
+  and e.created_at between p.test_start and p.test_end
+  and not (e.session_id = any(p.excluded));
