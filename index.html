@@ -13,10 +13,87 @@
 <body>
 <main>
 
+  <!-- ============ Главная ============ -->
+  <section class="screen home" id="home" hidden>
+    <div class="topbar spread">
+      <a class="logo" href="#home">[название]</a>
+      <a class="link" href="#data" id="home-data" hidden>Мои данные</a>
+    </div>
+
+    <div class="stack-10">
+      <h1 class="hero">Найди тиммейтов по делу, а не по знакомству</h1>
+      <p class="lead">Опиши учебный проект — подберём студентов MNU с нужными навыками и похожим опытом и объясним, почему они подходят.</p>
+      <div class="tags">
+        <span class="tag tag-lime">10–15 минут</span>
+        <span class="tag">без регистрации</span>
+        <span class="tag">прототип студентов MNU</span>
+      </div>
+    </div>
+    <a class="btn" id="home-start" href="#consent">Найти тиммейтов</a>
+
+    <!-- Пример карточки из подбора, чтобы сразу было видно, что получишь -->
+    <figure class="example">
+      <article class="card rec" aria-label="Пример карточки кандидата">
+        <div class="rec-head">
+          <div class="ava" style="background:#FFB3D9" aria-hidden="true">А</div>
+          <div class="grow">
+            <h2 class="rec-name">Айгерим</h2>
+            <div class="hint">2 курс · Финансы</div>
+          </div>
+          <div id="home-ring"></div>
+        </div>
+        <div class="tags">
+          <span class="tag ai">ИИ: делал(а) очень похожее</span>
+          <span class="tag hit">Excel и таблицы</span>
+          <span class="tag hit">роль: аналитик</span>
+          <span class="tag miss">ближе к дедлайну</span>
+        </div>
+        <div class="ai-note"><span class="ai-badge">ИИ</span><span>«Посчитала коэффициенты ликвидности и сделала сводную таблицу» — делала финансовый анализ, как в твоём проекте</span></div>
+        <div class="unk">Неизвестно: как принимает замечания — обсудите в первом разговоре</div>
+      </article>
+      <figcaption class="hint center">Пример карточки. Все кандидаты в прототипе — демо-профили.</figcaption>
+    </figure>
+
+    <div class="stack-10">
+      <h2 class="section-title">Знакомо?</h2>
+      <div class="stats">
+        <div class="stat"><b>37 из 47</b><span>студентов за год хотя бы дважды искали тиммейтов вне круга знакомых</span></div>
+        <div class="stat"><b>24 из 47</b><span>ставят навыки и примеры задач в топ-3 того, что важно знать о тиммейте</span></div>
+        <div class="stat"><b>26 из 47</b><span>ставят в топ-3 рабочие привычки человека</span></div>
+      </div>
+      <p class="hint">Опрос 47 студентов MNU 1–4 курсов, 24.09.2026. Только эта выборка, один университет.</p>
+    </div>
+
+    <div class="stack-10">
+      <h2 class="section-title">Как это работает</h2>
+      <ol class="steps">
+        <li><b>Расскажи о себе</b><span>Навыки, примеры задач, как ты работаешь и сколько у тебя времени.</span></li>
+        <li><b>Опиши проект</b><span>Что нужно сделать, каких навыков не хватает, когда дедлайн.</span></li>
+        <li><b>Получи подбор с объяснением</b><span>ИИ читает примеры задач кандидатов и находит тех, кто уже делал похожее. Цитата — прямо в карточке.</span></li>
+        <li><b>Договоритесь до старта</b><span>Чек-лист первого разговора: роли, сроки черновиков, как правим общую работу.</span></li>
+      </ol>
+    </div>
+
+    <div class="stack-10">
+      <h2 class="section-title">Чем мы отличаемся</h2>
+      <ul class="pluses">
+        <li><b>Без рейтингов и GPA.</b> Только то, что человек сам рассказал о навыках и опыте.</li>
+        <li><b>Честно о пробелах.</b> У каждого кандидата есть блок «Что неизвестно».</li>
+        <li><b>ИИ с доказательствами.</b> Если ИИ не может привести цитату из профиля, его ответ не засчитывается.</li>
+      </ul>
+    </div>
+
+    <a class="btn" id="home-start-2" href="#consent">Найти тиммейтов</a>
+    <p class="hint center">Учебный проект студентов MNU, курс Technopreneurship. Не официальный сервис университета.</p>
+  </section>
+
   <!-- ============ Экран 1. Согласие ============ -->
   <section class="screen" id="consent" hidden>
-    <span class="logo">[название]</span>
-    <h1>Найди тиммейтов для учебного проекта</h1>
+    <div class="topbar">
+      <a class="back" href="#home" aria-label="На главную"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></a>
+      <a class="logo" href="#home">[название]</a>
+    </div>
+    <h1>Перед началом</h1>
     <div class="tags">
       <span class="tag tag-lime">10–15 минут</span>
       <span class="tag">прототип студентов MNU</span>
@@ -250,7 +327,7 @@
   <!-- ============ Экран 6. Рекомендации ============ -->
   <section class="screen" id="recs" hidden>
     <div class="topbar spread">
-      <span class="logo">[название]</span>
+      <a class="logo" href="#home">[название]</a>
       <a class="link" href="#data">Мои данные</a>
     </div>
 

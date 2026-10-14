@@ -2,7 +2,7 @@
 // app.js — поведение экранов: переходы, выбор навыков, проверка
 // заполнения, сохранение профиля и удаление данных.
 //
-// Как устроены экраны: все они лежат в index.html, видимый — один.
+// Как устроены экраны: все они (и главная тоже) лежат в index.html, видимый — один.
 // Какой показывать, решает адрес после «#»: ...github.io/teammate-mvp/#p2
 // Поэтому кнопка «Назад» на телефоне тоже работает.
 // =====================================================================
@@ -23,7 +23,7 @@ let projectStartedAt = null;
 // ---------------------------------------------------------------------
 // 1. Переходы между экранами
 // ---------------------------------------------------------------------
-const SCREENS = ["consent", "p1", "p2", "p3", "project", "recs", "candidate", "talk", "data"];
+const SCREENS = ["home", "consent", "p1", "p2", "p3", "project", "recs", "candidate", "talk", "data"];
 
 // «Домашний» экран: куда вести человека в зависимости от того, что он уже заполнил
 function homeScreen() {
@@ -34,7 +34,8 @@ function homeScreen() {
 
 // Куда пускать, если человек открыл неподходящий экран
 function allowedScreen(wanted) {
-  if (!appState.consentAt) return "consent";                         // без согласия — только согласие
+  if (wanted === "home") return "home";                              // главная открыта всем
+  if (!appState.consentAt) return wanted === "consent" ? "consent" : "home";  // без согласия — главная или согласие
   if (wanted === "consent") return homeScreen();
   if (wanted === "project" && !appState.profileSavedAt) return "p1";  // проект — только после профиля
   if (["recs", "candidate", "talk"].includes(wanted) && !appState.projectSavedAt) return homeScreen();
@@ -52,6 +53,7 @@ function showScreen() {
   for (const id of SCREENS) $(id).hidden = (id !== screen);
   window.scrollTo(0, 0);
 
+  if (screen === "home") renderHome();
   if (screen === "p1" && !profileStartedAt) profileStartedAt = Date.now();
   if (screen === "project") {
     if (!projectStartedAt) projectStartedAt = Date.now();
@@ -101,6 +103,19 @@ function pressedValues(containerId) {
 function radioValue(name) {
   const checked = document.querySelector('input[name="' + name + '"]:checked');
   return checked ? checked.value : null;
+}
+
+// ---------------------------------------------------------------------
+// Главная. Кто уже начал — кнопка ведёт туда, где он остановился.
+// ---------------------------------------------------------------------
+function renderHome() {
+  const started = Boolean(appState.consentAt);
+  for (const id of ["home-start", "home-start-2"]) {
+    $(id).textContent = started ? "Продолжить" : "Найти тиммейтов";
+    $(id).href = started ? "#" + homeScreen() : "#consent";
+  }
+  $("home-data").hidden = !started;
+  if (!$("home-ring").firstChild) $("home-ring").appendChild(ringElement(90, 64));
 }
 
 // ---------------------------------------------------------------------
