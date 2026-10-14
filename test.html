@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Проверка шага 1</title>
+  <style>
+    body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: #f5f5f7; color: #1d1d1f; }
+    main { max-width: 480px; margin: 0 auto; padding: 24px 16px; }
+    .card { background: #fff; border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    p { line-height: 1.5; margin: 8px 0; }
+    .ok { color: #1a7f37; font-weight: 600; }
+    .err { color: #c62828; font-weight: 600; }
+    .muted { color: #6e6e73; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="card">
+      <h1>Проверка шага 1</h1>
+      <p class="muted">Служебная страница для команды. Тестерам её не показываем.</p>
+    </div>
+    <div class="card">
+      <p><b>1. Синтетические кандидаты</b></p>
+      <p id="candidates">Загружаю…</p>
+    </div>
+    <div class="card">
+      <p><b>2. Связь с базой Supabase</b></p>
+      <p id="db">Проверяю…</p>
+    </div>
+  </main>
+
+  <!-- Библиотека Supabase: готовый код, который умеет общаться с базой -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Наши настройки: адрес базы и ключ -->
+  <script src="config.js"></script>
+
+  <script>
+    // Пишет результат в нужную карточку: зелёным при успехе, красным при ошибке
+    function show(id, text, ok) {
+      const el = document.getElementById(id);
+      el.textContent = (ok ? "✅ " : "❌ ") + text;
+      el.className = ok ? "ok" : "err";
+    }
+
+    // Случайный ID устройства. Сохраняется в браузере, чтобы при повторном
+    // открытии это был тот же «тестер». Имени и почты мы не храним.
+    function getSessionId() {
+      let id = localStorage.getItem("session_id");
+      if (!id) {
+        id = (crypto.randomUUID) ? crypto.randomUUID()
+          : "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
+              (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+        localStorage.setItem("session_id", id);
+      }
+      return id;
+    }
+
+    // Проверка 1: файл с кандидатами открывается
+    async function checkCandidates() {
+      try {
+        const res = await fetch("data/candidates.json");
+        if (!res.ok) throw new Error("файл не найден (код " + res.status + "). Проверь, что он лежит в папке data");
+        const data = await res.json();
+        const all = data.candidates;
+        const synthetic = all.filter(c => c.is_synthetic === true).length;
+        show("candidates", "Загружено кандидатов: " + all.length + ", из них помечены SYNTHETIC: " + synthetic, synthetic === all.length);
+      } catch (e) {
+        show("candidates", "Ошибка: " + e.message, false);
+      }
+    }
+
+    // Проверка 2: в базу можно записать тестовое событие
+    async function checkDatabase() {
+      if (SUPABASE_URL.startsWith("ВСТАВЬ") || SUPABASE_KEY.startsWith("ВСТАВЬ")) {
+        show("db", "В config.js ещё не вставлены адрес и ключ Supabase", false);
+        return;
+      }
+      try {
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const { error } = await db.from("events").insert({
+          session_id: getSessionId(),
+          type: "connection_test",
+          payload: { page: "test.html", screen_width: window.innerWidth }
+        });
+        if (error) throw error;
+        show("db", "Тестовое событие записано. Найди его в Supabase → Table Editor → events", true);
+      } catch (e) {
+        show("db", "Ошибка: " + (e.message || e) + (e.code ? " (код " + e.code + ")" : ""), false);
+      }
+    }
+
+    checkCandidates();
+    checkDatabase();
+  </script>
+</body>
+</html>
