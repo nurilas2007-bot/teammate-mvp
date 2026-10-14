@@ -692,10 +692,8 @@ async function contactClicked(channel) {
   }, c.id);
 
   if (c.is_synthetic) {
-    // Демо-кандидат: письмо не открываем, объясняем почему
-    $("demo-text").textContent = c.name + " — демо-профиль, такого человека нет, поэтому письмо не отправится. " +
-      "Твой выбор мы засчитали — спасибо!";
-    openDialog($("demo-dialog"));
+    // Демо-кандидат: письмо не открываем, объясняем почему и задаём два вопроса
+    askWhy(talkRec);
     return;
   }
   const links = mailLinks(c.contact.value, $("mail-subject").textContent, body);
@@ -715,11 +713,63 @@ function closeDialog(d) {
   if (typeof d.close === "function") d.close();
   else d.removeAttribute("open");
 }
-$("demo-back").addEventListener("click", () => { closeDialog($("demo-dialog")); goTo("recs"); });
-$("demo-stay").addEventListener("click", () => closeDialog($("demo-dialog")));
+// ---------------------------------------------------------------------
+// 10. Два вопроса после выбора — главный замер этапа A:
+//     может ли человек объяснить выбор и назвать, чего не хватило
+// ---------------------------------------------------------------------
+let answerFor = null;   // о каком кандидате спрашиваем; null — уже ответили
+
+function askWhy(rec) {
+  const c = rec.candidate;
+  answerFor = {
+    id: c.id,
+    score: rec.total,
+    position: currentRecs.findIndex(r => r.candidate.id === c.id) + 1
+  };
+  $("demo-text").textContent = c.name + " — демо-профиль, такого человека нет, поэтому письмо не отправится. " +
+    "Твой выбор мы засчитали. Ответь на два коротких вопроса — так мы поймём, работает ли подбор.";
+  $("why-label").textContent = "Почему именно " + c.name + "?";
+  $("why").value = "";
+  $("missing").value = "";
+  openDialog($("demo-dialog"));
+}
+
+function saveAnswer(why, missing, skipped) {
+  if (!answerFor) return;           // защита от двойной записи
+  const a = answerFor;
+  answerFor = null;
+  logEvent("choice_explained", {
+    skipped: skipped,
+    why: why,
+    missing: missing,
+    score: a.score,
+    position: a.position
+  }, a.id);
+}
+
+$("answer-send").addEventListener("click", () => {
+  const why = $("why").value.trim();
+  const missing = $("missing").value.trim();
+  if (!why && !missing) {
+    toast("Напиши хотя бы один ответ или нажми «Пропустить»");
+    return;
+  }
+  saveAnswer(why, missing, false);
+  closeDialog($("demo-dialog"));
+  toast("Спасибо! Ответ сохранён");
+  goTo("recs");
+});
+
+$("answer-skip").addEventListener("click", () => {
+  saveAnswer("", "", true);
+  closeDialog($("demo-dialog"));
+});
+
+// Окно закрыли кнопкой «Назад» на телефоне или клавишей Esc — считаем пропуском
+$("demo-dialog").addEventListener("close", () => saveAnswer("", "", true));
 
 // ---------------------------------------------------------------------
-// 10. Мои данные и удаление
+// 11. Мои данные и удаление
 // ---------------------------------------------------------------------
 function renderDataScreen() {
   const list = $("data-list");
@@ -769,7 +819,7 @@ $("delete-data").addEventListener("click", async () => {
 });
 
 // ---------------------------------------------------------------------
-// 11. Запуск
+// 12. Запуск
 // ---------------------------------------------------------------------
 fillFormsFromProfile(appState.profile);
 fillProjectForm(appState.project);

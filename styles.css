@@ -323,6 +323,8 @@ a.btn { color: var(--lime); }
 .sheet::backdrop { background: rgba(14, 14, 16, 0.6); }
 .sheet-handle { width: 44px; height: 5px; border-radius: 3px; background: var(--ink); align-self: center; }
 .sheet h1 { font-size: 24px; }
+/* Шторка с вопросами выше экрана телефона — пусть прокручивается */
+.sheet { max-height: 92vh; overflow-y: auto; }
 .link-button {
   min-height: 44px; background: none; border: 0; color: var(--ink);
   font: inherit; font-weight: 700; font-size: 15px;

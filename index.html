@@ -399,8 +399,19 @@
   <span class="badge">ДЕМО-ПРОФИЛЬ</span>
   <h1 id="demo-title">Письмо не отправится</h1>
   <p id="demo-text"></p>
-  <button class="btn" type="button" id="demo-back">Вернуться к списку</button>
-  <button class="link-button" type="button" id="demo-stay">Остаться здесь</button>
+
+  <div>
+    <label class="label" for="why" id="why-label">Почему ты выбрал(а) этого человека?</label>
+    <textarea class="field" id="why" rows="3" maxlength="600" placeholder="Например: есть нужные навыки и похожие задачи уже делал(а)"></textarea>
+  </div>
+  <div>
+    <label class="label" for="missing">Какой информации не хватило, чтобы решить?</label>
+    <textarea class="field" id="missing" rows="3" maxlength="600" placeholder="Например: не видно, как человек принимает критику"></textarea>
+  </div>
+  <p class="hint">Не пиши имена реальных людей — ответы читает команда проекта.</p>
+
+  <button class="btn" type="button" id="answer-send">Отправить ответ</button>
+  <button class="link-button" type="button" id="answer-skip">Пропустить</button>
 </dialog>
 
 <!-- Всплывающее сообщение внизу экрана -->
