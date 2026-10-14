@@ -189,3 +189,23 @@ from public.events e, params p
 where e.type = 'recs_viewed'
   and e.created_at between p.test_start and p.test_end
   and not (e.session_id = any(p.excluded));
+
+
+-- ---------------------------------------------------------------------
+-- Запрос 6. «Собери мне команду»: сколько тестеров нажали, сколько
+-- навыков в среднем закрыла команда, ответил ли ИИ.
+-- ---------------------------------------------------------------------
+with params as (
+  select timestamptz '2026-11-23 00:00+05' as test_start,
+         timestamptz '2026-11-30 23:59+05' as test_end,
+         array[]::uuid[]                   as excluded
+)
+select count(distinct e.session_id)                                                         as "Тестеров собрали команду",
+       round(avg((e.payload->>'covered')::numeric / nullif((e.payload->>'needed')::numeric, 0)) * 100) || '%'
+                                                                                           as "Закрыто навыков в среднем",
+       count(*) filter (where (e.payload->'ai'->>'ok')::boolean)                            as "ИИ объяснил",
+       count(*) filter (where (e.payload->'ai'->>'ok')::boolean = false)                    as "Без ИИ (запасной режим)"
+from public.events e, params p
+where e.type = 'team_built'
+  and e.created_at between p.test_start and p.test_end
+  and not (e.session_id = any(p.excluded));

@@ -8,7 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@600;800&display=swap">
-  <link rel="stylesheet" href="styles.css">
+  <!-- ?v=12 — номер версии: при каждом обновлении сайта увеличиваем его,
+       чтобы браузеры не показывали старые файлы из своей памяти (кеша) -->
+  <link rel="stylesheet" href="styles.css?v=12">
 </head>
 <body>
 <main>
@@ -380,6 +382,33 @@
       <p>Показываем только тех, кто ищет команду и умеет хотя бы что-то из нужного. Баллы — это совпадение с проектом, а не оценка человека.</p>
     </details>
 
+    <!-- «Собери мне команду»: состав — по навыкам, объяснение — ИИ -->
+    <section class="team-box" id="team-box" hidden>
+      <div class="team-cta" id="team-cta">
+        <p class="team-cta-title">Не хочешь выбирать по одному?</p>
+        <p>ИИ соберёт команду, которая вместе закроет нужные навыки, и объяснит, кто за что отвечает.</p>
+        <button class="btn btn-fun" type="button" id="team-build">Собери мне команду</button>
+      </div>
+      <div class="ai-loading" id="team-loading" role="status" hidden>
+        <span class="spinner" aria-hidden="true"></span>
+        <span>ИИ собирает команду…</span>
+      </div>
+      <article class="card team-card" id="team-card" hidden>
+        <div class="team-head">
+          <h2><span class="ai-badge">ИИ</span> Твоя команда</h2>
+          <span class="tag tag-lime" id="team-cover"></span>
+        </div>
+        <p class="team-summary" id="team-summary"></p>
+        <div class="stack-10" id="team-members"></div>
+        <div class="unk" id="team-missing" hidden></div>
+        <div class="team-risks" id="team-risks-box" hidden>
+          <b>Над чем подумать</b>
+          <ul id="team-risks"></ul>
+        </div>
+        <p class="hint" id="team-note">Состав подобран по навыкам из анкет, объяснение — ИИ. ИИ может ошибаться: цитаты сверяй с профилями.</p>
+      </article>
+    </section>
+
     <div class="ai-loading" id="recs-loading" role="status" hidden>
       <span class="spinner" aria-hidden="true"></span>
       <span>ИИ читает примеры задач кандидатов…</span>
@@ -537,10 +566,10 @@
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <!-- Порядок важен: сначала настройки, потом код, который их использует -->
-<script src="config.js"></script>
-<script src="src/state.js"></script>
-<script src="src/db.js"></script>
-<script src="src/scoring.js"></script>
-<script src="src/app.js"></script>
+<script src="config.js?v=12"></script>
+<script src="src/state.js?v=12"></script>
+<script src="src/db.js?v=12"></script>
+<script src="src/scoring.js?v=12"></script>
+<script src="src/app.js?v=12"></script>
 </body>
 </html>

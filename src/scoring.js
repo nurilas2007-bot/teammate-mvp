@@ -133,11 +133,72 @@ function eligible(candidates, project) {
     .filter(c => project.needed_skills.some(s => c.skills.includes(s)));
 }
 
-// Главная функция: отфильтровать, посчитать, отсортировать, взять первых TOP_N
-function recommend(candidates, project, tester, seed, ai) {
+// Все подходящие кандидаты, от лучшего совпадения к худшему
+function rankAll(candidates, project, tester, seed, ai) {
   return eligible(candidates, project)
     .map(c => scoreCandidate(c, project, tester, ai || null))
     .sort((a, b) => (b.total - a.total) ||
-      (stableRandom(seed + a.candidate.id) - stableRandom(seed + b.candidate.id)))
-    .slice(0, TOP_N);
+      (stableRandom(seed + a.candidate.id) - stableRandom(seed + b.candidate.id)));
+}
+
+// Главная функция: отфильтровать, посчитать, отсортировать, взять первых TOP_N
+function recommend(candidates, project, tester, seed, ai) {
+  return rankAll(candidates, project, tester, seed, ai).slice(0, TOP_N);
+}
+
+// =====================================================================
+// Подбор КОМАНДЫ («Собери мне команду»).
+// Состав выбирает этот код, а не ИИ — так ИИ не может выдумать участника.
+// ИИ потом только объясняет, почему команда сработает (см. app.js).
+//
+// Как выбираем: по одному человеку за раз берём того, кто добавит
+// больше всего ещё не закрытых нужных навыков; при равенстве — того,
+// кто свободен до дедлайна, потом — с большим баллом совпадения.
+// Мест в команде: размер команды минус ты, но не больше 3.
+// =====================================================================
+function buildTeam(candidates, project, tester, seed, ai) {
+  const pool = eligible(candidates, project).map(c => scoreCandidate(c, project, tester, ai || null));
+  const slots = Math.max(1, Math.min(3, (project.team_size || 4) - 1));
+  const covered = new Set();
+  const members = [];
+
+  while (members.length < slots && pool.length) {
+    const ranked = pool.map(rec => ({
+      rec: rec,
+      newSkills: rec.matchedSkills.filter(s => !covered.has(s)),
+      available: rec.parts.time > 0 ? 1 : 0
+    })).sort((a, b) =>
+      (b.newSkills.length - a.newSkills.length) ||
+      (b.available - a.available) ||
+      (b.rec.total - a.rec.total) ||
+      (stableRandom(seed + a.rec.candidate.id) - stableRandom(seed + b.rec.candidate.id)));
+    const best = ranked[0];
+    members.push({ rec: best.rec, brings: best.newSkills });
+    for (const s of best.rec.matchedSkills) covered.add(s);
+    pool.splice(pool.indexOf(best.rec), 1);
+  }
+
+  // Риски считаем правилами, а не ИИ: это факты из профилей
+  const risks = [];
+  for (const m of members) {
+    const c = m.rec.candidate;
+    if (c.available_until < project.deadline) {
+      risks.push(c.name + ": свободен(на) только до " + shortDate(c.available_until) + " — раньше дедлайна");
+    } else if (c.hours_per_week < project.min_hours_per_week) {
+      risks.push(c.name + ": может " + c.hours_per_week + " ч/нед из нужных " + project.min_hours_per_week);
+    }
+    if (c.work_rhythm === "near_deadline" && project.desired_rhythm === "gradually") {
+      risks.push(c.name + ": обычно работает ближе к дедлайну — договоритесь о сроке черновиков");
+    }
+    if (c.goal !== project.desired_goal) {
+      risks.push(c.name + ": другая цель — " + GOAL_LABEL[c.goal]);
+    }
+  }
+
+  return {
+    members: members,
+    covered: project.needed_skills.filter(s => covered.has(s)),
+    missing: project.needed_skills.filter(s => !covered.has(s)),
+    risks: risks
+  };
 }

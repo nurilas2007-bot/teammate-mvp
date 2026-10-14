@@ -465,7 +465,9 @@ function loadCandidates() {
 }
 
 // Последний посчитанный список: нужен карточке кандидата
-let currentRecs = [];
+let currentRecs = [];   // первые 5 — их показываем списком
+let allRecs = [];       // все подходящие кандидаты по порядку — для карточек и команды
+let lastAi = null;      // последний ответ ИИ об опыте (нужен для команды)
 let aiStatus = null;   // как прошёл последний запрос к ИИ: { ok, ms, model, error }
 
 // ---- ИИ: оценка опыта по примерам задач ----
@@ -539,7 +541,9 @@ function aiResultsFor(candidates) {
 async function computeRecs() {
   const candidates = await loadCandidates();
   const ai = await aiResultsFor(eligible(candidates, appState.project));
-  currentRecs = recommend(candidates, appState.project, appState.profile, appState.sessionId, ai);
+  lastAi = ai;
+  allRecs = rankAll(candidates, appState.project, appState.profile, appState.sessionId, ai);
+  currentRecs = allRecs.slice(0, TOP_N);
   return currentRecs;
 }
 
@@ -632,6 +636,7 @@ async function renderRecs() {
     list.innerHTML = "";
     $("recs-loading").hidden = true;
     $("recs-ai-off").hidden = !(recs.length && recs[0].ai === null);
+    showTeamBox(recs.length > 0);
     recs.forEach((rec, i) => list.appendChild(recCard(rec, i)));
     $("recs-count").textContent = recs.length + " " + plural(recs.length, "кандидат", "кандидата", "кандидатов");
     $("recs-empty").hidden = recs.length > 0;
@@ -666,6 +671,175 @@ $("how").addEventListener("toggle", () => {
   }
 });
 
+
+// ---------------------------------------------------------------------
+// «Собери мне команду». Состав выбирает buildTeam (scoring.js) по навыкам,
+// ИИ объясняет роли и как участники дополняют друг друга.
+// Если ИИ не ответил — показываем ту же команду с объяснением по правилам.
+// ---------------------------------------------------------------------
+function teamKey() {
+  return (appState.projectVersion || 0) + ":" + appState.projectSavedAt;
+}
+
+function showTeamBox(visible) {
+  $("team-box").hidden = !visible;
+  // Если команду для этой версии проекта уже собирали — показываем сразу
+  const saved = appState.team && appState.team.key === teamKey() ? appState.team : null;
+  $("team-cta").hidden = Boolean(saved);
+  $("team-card").hidden = !saved;
+  $("team-loading").hidden = true;
+  if (saved) renderTeam(saved.ids, saved.explain);
+}
+
+async function askAiTeam(team) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+  try {
+    const pr = appState.project;
+    const response = await fetch(AI_URL, {
+      method: "POST",
+      signal: controller.signal,
+      headers: dbHeaders(),
+      body: JSON.stringify({
+        mode: "team",
+        project: { title: pr.title, description: pr.description, needed_skills: pr.needed_skills },
+        members: team.members.map(m => ({
+          id: m.rec.candidate.id,
+          name: m.rec.candidate.name,
+          brings: m.brings,
+          skills: m.rec.matchedSkills,
+          examples: m.rec.candidate.task_examples
+        }))
+      })
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) throw new Error((data && data.error) || ("код " + response.status));
+    if (!data || !data.summary || !Array.isArray(data.roles)) throw new Error("неполный ответ ИИ");
+    const roles = {};
+    for (const r of data.roles) {
+      const m = team.members.find(x => x.rec.candidate.id === r.id);
+      if (!m) continue;
+      // Вторая проверка цитаты — уже на сайте
+      const quote = r.quote && quoteIsReal(r.quote, m.rec.candidate) ? r.quote : "";
+      roles[r.id] = { role: String(r.role || "").slice(0, 60), quote: quote };
+    }
+    return { summary: String(data.summary).slice(0, 300), roles: roles };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Объяснение без ИИ — по правилам, чтобы команда показывалась всегда
+function plainExplain(team) {
+  const roles = {};
+  for (const m of team.members) {
+    const id = m.rec.candidate.id;
+    roles[id] = {
+      role: m.brings.length ? "закрывает: " + m.brings.join(", ").toLowerCase()
+                            : "подстраховка: " + m.rec.matchedSkills.join(", ").toLowerCase(),
+      quote: ""
+    };
+  }
+  return {
+    summary: "Вместе закрывают " + team.covered.length + " из " + appState.project.needed_skills.length + " нужных навыков.",
+    roles: roles,
+    plain: true
+  };
+}
+
+let teamRunning = false;
+$("team-build").addEventListener("click", async () => {
+  if (teamRunning) return;
+  teamRunning = true;
+  $("team-cta").hidden = true;
+  $("team-loading").hidden = false;
+  const started = Date.now();
+  let explain = null, aiError = null;
+  try {
+    const candidates = await loadCandidates();
+    const team = buildTeam(candidates, appState.project, appState.profile, appState.sessionId, lastAi);
+    try {
+      explain = await askAiTeam(team);
+    } catch (e) {
+      console.warn("ИИ не объяснил команду:", e.message);
+      aiError = String(e.message).slice(0, 200);
+      explain = plainExplain(team);
+    }
+    const ids = team.members.map(m => m.rec.candidate.id);
+    // Запоминаем только ответ ИИ; запасное объяснение — нет, чтобы в следующий раз спросить ИИ снова
+    if (!explain.plain) updateState({ team: { key: teamKey(), ids: ids, explain: explain } });
+    $("team-loading").hidden = true;
+    $("team-card").hidden = false;
+    renderTeam(ids, explain);
+    logEvent("team_built", {
+      members: ids,
+      covered: team.covered.length,
+      needed: appState.project.needed_skills.length,
+      ai: { ok: !explain.plain, ms: Date.now() - started, error: aiError }
+    });
+  } catch (e) {
+    console.error(e);
+    $("team-loading").hidden = true;
+    $("team-cta").hidden = false;
+    toast("Не получилось собрать команду. Попробуй ещё раз");
+  } finally {
+    teamRunning = false;
+  }
+});
+
+function renderTeam(ids, explain) {
+  const pr = appState.project;
+  const members = ids.map(id => allRecs.find(r => r.candidate.id === id)).filter(Boolean);
+  // Если кандидатов ещё не посчитали (открыли страницу заново) — показать нечего
+  if (!members.length) { $("team-card").hidden = true; $("team-cta").hidden = false; return; }
+  const covered = pr.needed_skills.filter(s => members.some(r => r.matchedSkills.includes(s)));
+  const missing = pr.needed_skills.filter(s => !covered.includes(s));
+
+  $("team-cover").textContent = covered.length + " из " + pr.needed_skills.length + " навыков";
+  $("team-summary").textContent = explain.summary;
+
+  const list = $("team-members");
+  list.innerHTML = "";
+  members.forEach((rec, i) => {
+    const c = rec.candidate;
+    const role = explain.roles[c.id] || { role: "", quote: "" };
+    const row = el("div", "member");
+    const ava = el("div", "ava", c.name.charAt(0));
+    ava.style.background = AVATAR_COLORS[i % AVATAR_COLORS.length];
+    ava.setAttribute("aria-hidden", "true");
+    const body = el("div", "member-body");
+    const name = el("div", "member-name");
+    const link = el("a", "", "Профиль");
+    link.href = "#candidate/" + c.id;
+    link.setAttribute("aria-label", "Профиль: " + c.name);
+    name.append(el("b", "", c.name), link);
+    body.appendChild(name);
+    if (role.role) body.appendChild(el("div", "member-role", role.role));
+    const tags = el("div", "tags");
+    for (const s of rec.matchedSkills) tags.appendChild(el("span", "tag hit", s));
+    body.appendChild(tags);
+    if (role.quote) body.appendChild(el("div", "member-quote", "«" + role.quote + "»"));
+    row.append(ava, body);
+    list.appendChild(row);
+  });
+
+  $("team-missing").hidden = missing.length === 0;
+  $("team-missing").textContent = missing.length
+    ? "Никто из кандидатов не закрывает: " + missing.join(", ") + ". Этот навык придётся взять на себя или искать дальше."
+    : "";
+
+  // Риски считаются правилами из профилей (scoring.js), а не ИИ
+  const risks = buildTeam(members.map(r => r.candidate), Object.assign({}, pr, { team_size: members.length + 1 }),
+    appState.profile, appState.sessionId, lastAi).risks;
+  $("team-risks-box").hidden = risks.length === 0;
+  const ul = $("team-risks");
+  ul.innerHTML = "";
+  for (const r of risks) ul.appendChild(el("li", "", r));
+  $("team-note").textContent = explain.plain
+    ? "ИИ сейчас не ответил — состав подобран по навыкам из анкет, объяснение по правилам."
+    : "Состав подобран по навыкам из анкет, объяснение — ИИ. ИИ может ошибаться: цитаты сверяй с профилями.";
+}
+
 const DRAFTS_TEXT = { true: "показывает черновики", false: "показывает готовое" };
 
 function renderAiBlock(rec) {
@@ -687,9 +861,9 @@ async function renderCandidate(id) {
   if (!currentRecs.length) {
     try { await computeRecs(); } catch (e) { return goTo("recs"); }
   }
-  const position = currentRecs.findIndex(r => r.candidate.id === id);
+  const position = allRecs.findIndex(r => r.candidate.id === id);
   if (position === -1) return goTo("recs");   // такого кандидата нет в подборке
-  const rec = currentRecs[position];
+  const rec = allRecs[position];
   const c = rec.candidate;
 
   $("cand-name").textContent = c.name;
@@ -784,7 +958,7 @@ async function renderTalk(id) {
   if (!currentRecs.length) {
     try { await computeRecs(); } catch (e) { return goTo("recs"); }
   }
-  const rec = currentRecs.find(r => r.candidate.id === id);
+  const rec = allRecs.find(r => r.candidate.id === id);
   if (!rec) return goTo("recs");
   const c = rec.candidate;
 
@@ -848,7 +1022,7 @@ function askWhy(rec) {
   answerFor = {
     id: c.id,
     score: rec.total,
-    position: currentRecs.findIndex(r => r.candidate.id === c.id) + 1,
+    position: allRecs.findIndex(r => r.candidate.id === c.id) + 1,
     aiLevel: rec.ai ? rec.ai.level : null
   };
   $("demo-text").textContent = c.name + " — демо-профиль, такого человека нет, поэтому письмо не отправится. " +

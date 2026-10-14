@@ -446,3 +446,25 @@ a.btn.btn-fun, a.btn.btn-fun:hover { color: var(--ink); }
   .btn-fun { transition: none; }
 }
 .home { overflow-x: hidden; overflow-x: clip; }
+
+/* =====================================================================
+   «Собери мне команду»
+   ===================================================================== */
+.team-box[hidden], .team-cta[hidden], .team-risks[hidden] { display: none; }
+.team-cta { display: flex; flex-direction: column; gap: 10px; padding: 18px 16px; border-radius: 22px; background: var(--ink); color: #fff; }
+.team-cta-title { margin: 0; font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: 20px; color: var(--lime); }
+.team-cta p { margin: 0; }
+.team-card { background: #F4FFD0; gap: 12px; }
+.team-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.team-head h2 { margin: 0; font-size: 17px; }
+.team-summary { font-size: 16px; font-weight: 500; }
+.member { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border: 2px solid var(--ink); border-radius: 16px; background: #fff; }
+.member .ava { width: 40px; height: 40px; font-size: 15px; }
+.member-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.member-name { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.member-name b { font-family: 'Unbounded', sans-serif; font-size: 15px; }
+.member-name a { font-size: 14px; font-weight: 600; min-height: 32px; display: inline-flex; align-items: center; }
+.member-role { font-weight: 600; }
+.member-quote { font-size: 14px; font-style: italic; color: var(--muted); }
+.team-risks { padding: 12px 14px; border-radius: 14px; background: var(--pink); border: 1.5px solid var(--ink); font-size: 14px; }
+.team-risks ul { margin: 6px 0 0; }
