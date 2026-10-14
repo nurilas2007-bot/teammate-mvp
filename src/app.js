@@ -23,13 +23,13 @@ let projectStartedAt = null;
 // ---------------------------------------------------------------------
 // 1. Переходы между экранами
 // ---------------------------------------------------------------------
-const SCREENS = ["consent", "p1", "p2", "p3", "project", "ready", "data"];
+const SCREENS = ["consent", "p1", "p2", "p3", "project", "recs", "candidate", "data"];
 
 // «Домашний» экран: куда вести человека в зависимости от того, что он уже заполнил
 function homeScreen() {
   if (!appState.profileSavedAt) return "p1";
   if (!appState.projectSavedAt) return "project";
-  return "ready";
+  return "recs";
 }
 
 // Куда пускать, если человек открыл неподходящий экран
@@ -37,13 +37,14 @@ function allowedScreen(wanted) {
   if (!appState.consentAt) return "consent";                         // без согласия — только согласие
   if (wanted === "consent") return homeScreen();
   if (wanted === "project" && !appState.profileSavedAt) return "p1";  // проект — только после профиля
-  if (wanted === "ready" && !appState.projectSavedAt) return homeScreen();
+  if ((wanted === "recs" || wanted === "candidate") && !appState.projectSavedAt) return homeScreen();
   if (SCREENS.includes(wanted)) return wanted;
   return homeScreen();                                               // пустой или неизвестный адрес
 }
 
 function showScreen() {
-  const wanted = location.hash.replace("#", "");
+  // Адрес вида #candidate/c01: экран «candidate», параметр «c01»
+  const [wanted, param] = location.hash.replace("#", "").split("/");
   const screen = allowedScreen(wanted);
   if (screen !== wanted) {
     history.replaceState(null, "", "#" + screen);
@@ -56,7 +57,8 @@ function showScreen() {
     if (!projectStartedAt) projectStartedAt = Date.now();
     renderProjectHint();
   }
-  if (screen === "ready") $("ready-title").textContent = "Готово! Проект «" + appState.project.title + "» сохранён";
+  if (screen === "recs") renderRecs();
+  if (screen === "candidate") renderCandidate(param);
   if (screen === "data") renderDataScreen();
 }
 
@@ -395,7 +397,7 @@ $("pr-save").addEventListener("click", async () => {
       fill_seconds: projectStartedAt ? Math.round((Date.now() - projectStartedAt) / 1000) : null
     });
     projectStartedAt = null;
-    goTo("ready");
+    goTo("recs");
   } catch (e) {
     console.error(e);
     showError("pr-error", "Не получилось сохранить. Проверь интернет и нажми ещё раз. (" + e.message + ")");
@@ -421,10 +423,206 @@ function fillProjectForm(pr) {
   collapseProjectSkills();
 }
 
-$("edit-project").addEventListener("click", () => goTo("project"));
+// ---------------------------------------------------------------------
+// 8. Рекомендации и карточка кандидата
+// ---------------------------------------------------------------------
+const AVATAR_COLORS = ["#FFB3D9", "#9BD8FF", "#D7FF3A", "#FFFFFF", "#FFD59B"];
+const PART_LABELS = [
+  ["skills", "Навыки"], ["roles", "Роль"], ["time", "Время"],
+  ["rhythm", "Ритм работы"], ["goal", "Цель"], ["comm", "Связь"]
+];
+
+// Список кандидатов загружаем один раз из data/candidates.json
+let candidatesPromise = null;
+function loadCandidates() {
+  if (!candidatesPromise) {
+    candidatesPromise = fetch("data/candidates.json")
+      .then(r => {
+        if (!r.ok) throw new Error("файл кандидатов не найден (" + r.status + ")");
+        return r.json();
+      })
+      .then(data => data.candidates)
+      .catch(e => { candidatesPromise = null; throw e; });
+  }
+  return candidatesPromise;
+}
+
+// Последний посчитанный список: нужен карточке кандидата
+let currentRecs = [];
+
+async function computeRecs() {
+  const candidates = await loadCandidates();
+  currentRecs = recommend(candidates, appState.project, appState.profile, appState.sessionId);
+  return currentRecs;
+}
+
+// Создать элемент с классом и текстом. textContent безопасен:
+// любой текст показывается как текст, а не как разметка.
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+// Кольцо с баллом: маленькое (64) для списка, большое (96) для карточки
+function ringElement(score, size) {
+  const big = size > 70;
+  const outer = size / 2 - 2;
+  const inner = big ? 36 : 23;
+  const width = big ? 7 : 5;
+  const circle = 2 * Math.PI * inner;
+  const c = size / 2;
+  const box = el("div", "ring");
+  box.style.width = size + "px";
+  box.style.height = size + "px";
+  box.setAttribute("role", "img");
+  box.setAttribute("aria-label", "Совпадение с проектом " + score + " из 100");
+  box.innerHTML =
+    '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' +
+    '<circle cx="' + c + '" cy="' + c + '" r="' + outer + '" fill="#D7FF3A" stroke="#0E0E10" stroke-width="2"/>' +
+    '<circle cx="' + c + '" cy="' + c + '" r="' + inner + '" fill="none" stroke="#0E0E10" stroke-opacity="0.15" stroke-width="' + width + '"/>' +
+    '<circle cx="' + c + '" cy="' + c + '" r="' + inner + '" fill="none" stroke="#0E0E10" stroke-width="' + width + '" stroke-linecap="round"' +
+    ' stroke-dasharray="' + (circle * score / 100).toFixed(1) + ' ' + circle.toFixed(1) + '" transform="rotate(-90 ' + c + ' ' + c + ')"/>' +
+    '</svg><b style="font-size:' + (big ? 24 : 17) + 'px">' + score + (big ? "<small>из 100</small>" : "") + "</b>";
+  return box;
+}
+
+function subtitle(c) {
+  return c.year + " курс" + (c.major ? " · " + c.major : "");
+}
+
+function recCard(rec, index) {
+  const c = rec.candidate;
+  const card = el("article", "card rec");
+
+  const head = el("div", "rec-head");
+  const ava = el("div", "ava", c.name.charAt(0));
+  ava.style.background = AVATAR_COLORS[index % AVATAR_COLORS.length];
+  ava.setAttribute("aria-hidden", "true");
+  const who = el("div", "grow");
+  who.appendChild(el("h2", "rec-name", c.name));
+  who.appendChild(el("div", "hint", subtitle(c)));
+  head.append(ava, who, ringElement(rec.total, 64));
+  card.appendChild(head);
+
+  const tags = el("div", "tags");
+  for (const t of rec.hits) tags.appendChild(el("span", "tag hit", t));
+  for (const t of rec.misses) tags.appendChild(el("span", "tag miss", t));
+  card.appendChild(tags);
+
+  if (rec.shortUnknowns.length) {
+    card.appendChild(el("div", "unk", "Неизвестно: " + rec.shortUnknowns.join("; ")));
+  }
+
+  const go = el("a", "go", "Смотреть профиль");
+  go.href = "#candidate/" + c.id;
+  card.appendChild(go);
+  return card;
+}
+
+async function renderRecs() {
+  const list = $("recs-list");
+  list.innerHTML = "";
+  showError("recs-error", "");
+  $("recs-project").textContent = appState.project.title;
+  try {
+    const recs = await computeRecs();
+    recs.forEach((rec, i) => list.appendChild(recCard(rec, i)));
+    $("recs-count").textContent = recs.length + " " + plural(recs.length, "кандидат", "кандидата", "кандидатов");
+    $("recs-empty").hidden = recs.length > 0;
+    $("recs-legend").hidden = recs.length === 0;
+    logEvent("recs_viewed", {
+      project_version: appState.projectVersion,
+      shown: recs.map(r => ({ id: r.candidate.id, score: r.total }))
+    });
+  } catch (e) {
+    console.error(e);
+    showError("recs-error", "Не получилось загрузить кандидатов. Обнови страницу. (" + e.message + ")");
+  }
+}
+
+// 1 кандидат, 2 кандидата, 5 кандидатов
+function plural(n, one, few, many) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
+}
+
+// «Как считается подбор»: записываем, что человек раскрыл объяснение
+let howLogged = false;
+$("how").addEventListener("toggle", () => {
+  if ($("how").open && !howLogged) {
+    howLogged = true;
+    logEvent("how_scoring_viewed");
+  }
+});
+
+const DRAFTS_TEXT = { true: "показывает черновики", false: "показывает готовое" };
+
+async function renderCandidate(id) {
+  // Если страницу открыли сразу по ссылке на кандидата — сначала считаем список
+  if (!currentRecs.length) {
+    try { await computeRecs(); } catch (e) { return goTo("recs"); }
+  }
+  const position = currentRecs.findIndex(r => r.candidate.id === id);
+  if (position === -1) return goTo("recs");   // такого кандидата нет в подборке
+  const rec = currentRecs[position];
+  const c = rec.candidate;
+
+  $("cand-name").textContent = c.name;
+  $("cand-sub").textContent = subtitle(c) + " · ищет команду";
+  $("cand-ring").replaceChildren(ringElement(rec.total, 96));
+
+  const parts = $("cand-parts");
+  parts.innerHTML = "";
+  for (const [key, label] of PART_LABELS) {
+    const row = el("div", "part");
+    const track = el("div", "track");
+    const fill = el("div", "fill");
+    fill.style.width = Math.round(100 * rec.parts[key] / SCORE_WEIGHTS[key]) + "%";
+    track.appendChild(fill);
+    row.append(el("span", "", label), track, el("span", "val", rec.parts[key] + "/" + SCORE_WEIGHTS[key]));
+    parts.appendChild(row);
+  }
+
+  const examples = $("cand-examples");
+  examples.innerHTML = "";
+  if (c.task_examples.length === 0) {
+    examples.appendChild(el("p", "hint", "Примеров выполненных задач в профиле нет."));
+  }
+  for (const ex of c.task_examples) {
+    const box = el("div", "ex");
+    box.append(el("b", "", ex.task), el("span", "", ex.did));
+    examples.appendChild(box);
+  }
+
+  const facts = $("cand-facts");
+  facts.innerHTML = "";
+  for (const s of c.skills) facts.appendChild(el("span", rec.matchedSkills.includes(s) ? "tag hit" : "tag", s));
+  for (const t of [
+    RHYTHM_SHORT[c.work_rhythm],
+    COMM_LABEL[c.comm_pref],
+    DRAFTS_TEXT[c.shares_drafts],
+    "цель: " + GOAL_LABEL[c.goal],
+    "роли: " + c.preferred_roles.join(", ").toLowerCase(),
+    c.hours_per_week + " ч/нед до " + shortDate(c.available_until)
+  ]) facts.appendChild(el("span", "tag", t));
+
+  const unknowns = $("cand-unknowns");
+  unknowns.innerHTML = "";
+  for (const u of rec.unknowns) unknowns.appendChild(el("li", "", u));
+
+  logEvent("candidate_opened", { position: position + 1, score: rec.total }, c.id);
+}
+
+$("cand-prepare").addEventListener("click", () => {
+  toast("Чек-лист для разговора появится на следующем шаге");
+});
 
 // ---------------------------------------------------------------------
-// 8. Мои данные и удаление
+// 9. Мои данные и удаление
 // ---------------------------------------------------------------------
 function renderDataScreen() {
   const list = $("data-list");
@@ -474,7 +672,7 @@ $("delete-data").addEventListener("click", async () => {
 });
 
 // ---------------------------------------------------------------------
-// 9. Запуск
+// 10. Запуск
 // ---------------------------------------------------------------------
 fillFormsFromProfile(appState.profile);
 fillProjectForm(appState.project);

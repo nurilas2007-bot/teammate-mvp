@@ -234,6 +234,72 @@ fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
 }
 .more[hidden], .chip[hidden] { display: none; }
 
+/* =====================================================================
+   Шаг 5: рекомендации и карточка кандидата
+   ===================================================================== */
+.stack-18 { display: flex; flex-direction: column; gap: 18px; }
+.grow { flex: 1; min-width: 0; }
+.strong { font-weight: 600; }
+.card[hidden], .warn[hidden] { display: none; }
+.tag-sky { background: #9BD8FF; }
+.link-small { align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; font-weight: 600; }
+
+/* «Как считается подбор» */
+.how { border: 2px dashed var(--ink); border-radius: 16px; padding: 0 14px; }
+.how summary { min-height: 48px; display: flex; align-items: center; font-weight: 700; cursor: pointer; }
+.how[open] { padding-bottom: 14px; }
+.how p { margin: 6px 0; font-size: 15px; }
+.how ul { font-size: 15px; }
+
+/* Карточка в списке */
+.rec { gap: 12px; }
+.rec-head { display: flex; gap: 12px; align-items: center; }
+.rec-name { font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: 18px; line-height: 1.2; margin: 0; }
+.ava {
+  width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid var(--ink);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: 18px;
+}
+.tag.hit { background: var(--ink); color: var(--lime); }
+.tag.miss { background: var(--pink); }
+.unk { font-size: 14px; padding: 8px 12px; border-radius: 12px; background: var(--pink); border: 1.5px dashed var(--ink); }
+.go {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 48px; border-radius: 14px;
+  background: var(--ink); color: var(--lime);
+  font-weight: 700; text-decoration: none;
+}
+a.go:hover { color: var(--lime); }
+
+/* Кольцо с баллом */
+.ring { position: relative; flex-shrink: 0; }
+.ring svg { display: block; }
+.ring b {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-family: 'Unbounded', sans-serif; font-weight: 800; line-height: 1;
+}
+.ring small { font-family: 'Onest', sans-serif; font-size: 11px; font-weight: 600; margin-top: 2px; }
+
+/* Карточка кандидата */
+.cand-head { display: flex; gap: 14px; align-items: center; }
+.cand-head h1 { font-size: 28px; }
+.badge {
+  align-self: flex-start;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
+  padding: 4px 10px; border-radius: 999px;
+  border: 1.5px solid var(--ink); background: #9BD8FF;
+}
+.part { display: grid; grid-template-columns: 96px minmax(0, 1fr) 48px; gap: 10px; align-items: center; font-size: 14px; font-weight: 500; }
+.track { height: 12px; border-radius: 6px; border: 1.5px solid var(--ink); background: #fff; overflow: hidden; }
+.fill { height: 100%; background: var(--ink); }
+.val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+.ex { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-top: 1.5px dashed var(--ink); }
+.ex:first-child { border-top: 0; padding-top: 0; }
+.warn { background: var(--pink); border: 2px solid var(--ink); border-radius: 20px; padding: 16px; }
+.warn ul { display: flex; flex-direction: column; gap: 6px; }
+
 /* ---------- Кнопки ---------- */
 .bottom { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
 .btn, .btn-outline, .btn-danger {

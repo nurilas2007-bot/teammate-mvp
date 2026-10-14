@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Проверка подбора</title>
+  <style>
+    body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: #fff; color: #0E0E10; }
+    main { max-width: 560px; margin: 0 auto; padding: 20px 16px 40px; }
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    .muted { color: #45454D; font-size: 14px; }
+    .case { border: 2px solid #0E0E10; border-radius: 16px; padding: 12px 14px; margin: 12px 0; }
+    .ok { background: #EEFFB8; }
+    .fail { background: #FFE1EF; }
+    .case b { display: block; margin-bottom: 4px; }
+    .case p { margin: 4px 0 0; font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+    td, th { border-bottom: 1px solid #DDD; padding: 6px 4px; text-align: left; }
+    th { font-weight: 600; }
+    #summary { font-size: 18px; font-weight: 700; margin: 16px 0; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Проверка подбора</h1>
+  <p class="muted">Служебная страница для команды. Каждый случай проверяет одно правило из scoring.js на синтетических кандидатах.</p>
+  <div id="summary">Проверяю…</div>
+  <div id="cases"></div>
+  <h2 style="font-size:16px">Полная выдача для примерного проекта</h2>
+  <p class="muted">Проект «Финансовый анализ»: нужны Excel, финансовые расчёты и дизайн слайдов; роли аналитик и дизайнер; 5 ч/нед; дедлайн 10.12.2026; работаем заранее; цель — максимальная оценка.</p>
+  <div id="table"></div>
+</main>
+
+<script src="../src/scoring.js"></script>
+<script>
+  // Примерный проект и тестер — те же, что в макете
+  const PROJECT = {
+    needed_skills: ["Excel и таблицы", "Финансовые расчёты", "Дизайн слайдов"],
+    needed_roles: ["Аналитик", "Дизайнер"],
+    min_hours_per_week: 5,
+    deadline: "2026-12-10",
+    desired_rhythm: "gradually",
+    desired_goal: "max_grade"
+  };
+  const TESTER = { comm_pref: "messages" };
+
+  const results = [];
+  function check(title, passed, details) {
+    results.push({ title, passed, details });
+  }
+
+  fetch("../data/candidates.json")
+    .then(r => r.json())
+    .then(data => {
+      const all = data.candidates;
+      const recs = recommend(all, PROJECT, TESTER, "test-seed");
+      const byName = name => recs.find(r => r.candidate.name === name);
+      const full = name => scoreCandidate(all.find(c => c.name === name), PROJECT, TESTER);
+
+      // 1. Порядок
+      check("1. Лучшее совпадение — первым",
+        recs[0].candidate.name === "Айгерим" && recs[0].total === 87 && recs[1].candidate.name === "Сабина" && recs[1].total === 73,
+        "Ожидаем: Айгерим 87, затем Сабина 73. Получили: " + recs.slice(0, 2).map(r => r.candidate.name + " " + r.total).join(", "));
+
+      // 2. Фильтр по навыкам
+      check("2. Без нужных навыков — не показываем",
+        !byName("Инкар"),
+        "У Инкар нет ни одного нужного навыка, хотя по стилю работы она набрала бы " + full("Инкар").total + " баллов. В списке её быть не должно.");
+
+      // 3. Фильтр «ищет команду»
+      check("3. Не ищет команду — не показываем",
+        !byName("Нурлан") && full("Нурлан").matchedSkills.length === 2,
+        "У Нурлана есть 2 нужных навыка, но он не ищет команду.");
+
+      // 4. Свободен меньше, чем до дедлайна
+      const k = full("Камила");
+      check("4. Свободен только до дедлайна — 0 баллов за время",
+        k.parts.time === 0 && k.misses.includes("свободен(на) только до 25.11"),
+        "Камила свободна до 25.11, а дедлайн 10.12. Время: " + k.parts.time + " из 20, тег: «" + k.misses[0] + "».");
+
+      // 5. Меньше часов — баллы пропорционально
+      const a = full("Арман");
+      check("5. Меньше часов — баллы пропорционально",
+        a.parts.time === 12 && a.misses.includes("3 ч/нед из 5"),
+        "Арман может 3 ч из нужных 5: 20 × 3/5 = 12. Получили " + a.parts.time + ".");
+
+      // 6. Не больше 5 и одинаковый порядок
+      const again = recommend(all, PROJECT, TESTER, "test-seed");
+      check("6. Не больше 5 кандидатов, порядок не прыгает",
+        recs.length <= TOP_N && again.map(r => r.candidate.id).join() === recs.map(r => r.candidate.id).join(),
+        "Показано " + recs.length + ". Повторный расчёт дал тот же порядок.");
+
+      // Вывод
+      const box = document.getElementById("cases");
+      for (const r of results) {
+        const div = document.createElement("div");
+        div.className = "case " + (r.passed ? "ok" : "fail");
+        const b = document.createElement("b");
+        b.textContent = (r.passed ? "✅ " : "❌ ") + r.title;
+        const p = document.createElement("p");
+        p.textContent = r.details;
+        div.append(b, p);
+        box.appendChild(div);
+      }
+      const passed = results.filter(r => r.passed).length;
+      document.getElementById("summary").textContent =
+        (passed === results.length ? "✅ " : "❌ ") + "Прошло " + passed + " из " + results.length;
+
+      // Таблица
+      const rows = all
+        .map(c => scoreCandidate(c, PROJECT, TESTER))
+        .sort((x, y) => y.total - x.total)
+        .map(r => {
+          const shown = recs.some(x => x.candidate.id === r.candidate.id);
+          return "<tr><td>" + r.candidate.name + "</td><td>" + r.total + "</td><td>" +
+            r.parts.skills + "/" + r.parts.roles + "/" + r.parts.time + "/" + r.parts.rhythm + "/" + r.parts.goal + "/" + r.parts.comm +
+            "</td><td>" + (shown ? "да" : "—") + "</td></tr>";
+        }).join("");
+      document.getElementById("table").innerHTML =
+        "<table><tr><th>Кандидат</th><th>Балл</th><th>Навыки/роль/время/ритм/цель/связь</th><th>В выдаче</th></tr>" + rows + "</table>";
+    })
+    .catch(e => {
+      document.getElementById("summary").textContent = "❌ Не загрузились кандидаты: " + e.message;
+    });
+</script>
+</body>
+</html>

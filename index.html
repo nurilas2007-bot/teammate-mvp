@@ -242,17 +242,89 @@
     <button class="btn bottom" type="button" id="pr-save">Найти тиммейтов</button>
   </section>
 
-  <!-- ============ Временный экран: проект сохранён ============ -->
-  <!-- На шаге 5 здесь появятся рекомендации кандидатов -->
-  <section class="screen" id="ready" hidden>
+  <!-- ============ Экран 6. Рекомендации ============ -->
+  <section class="screen" id="recs" hidden>
     <div class="topbar spread">
       <span class="logo">[название]</span>
       <a class="link" href="#data">Мои данные</a>
     </div>
-    <span class="tag tag-lime self-start">Проект сохранён</span>
-    <h1 id="ready-title">Готово!</h1>
-    <p>Подбор кандидатов появится на следующем шаге разработки.</p>
-    <button class="btn-outline" type="button" id="edit-project">Изменить проект</button>
+
+    <div class="stack-10">
+      <h1>Твои люди<br>для проекта</h1>
+      <div class="tags">
+        <span class="tag" id="recs-project"></span>
+        <span class="tag" id="recs-count"></span>
+        <span class="tag tag-sky">все — демо</span>
+      </div>
+      <a class="link-small" href="#project">Изменить проект</a>
+    </div>
+
+    <!-- Раскрывающееся объяснение, как считается подбор -->
+    <details class="how" id="how">
+      <summary>Как считается подбор</summary>
+      <p>Мы сравниваем профиль кандидата с твоим проектом. Всего 100 баллов:</p>
+      <ul>
+        <li><b>Навыки — 40.</b> Какая доля нужных навыков у него есть</li>
+        <li><b>Время — 20.</b> Хватает ли часов в неделю и свободен ли до дедлайна</li>
+        <li><b>Роль — 15.</b> Хочет ли он нужную роль</li>
+        <li><b>Ритм работы — 10.</b> Заранее или ближе к дедлайну, как ты</li>
+        <li><b>Цель — 10.</b> Совпадает ли цель в проекте</li>
+        <li><b>Связь — 5.</b> Удобный формат общения</li>
+      </ul>
+      <p>Показываем только тех, кто ищет команду и умеет хотя бы что-то из нужного. Баллы — это совпадение с проектом, а не оценка человека.</p>
+    </details>
+
+    <!-- Карточки кандидатов создаёт app.js -->
+    <div class="stack-18" id="recs-list"></div>
+
+    <div class="card" id="recs-empty" hidden>
+      <h2>Пока никто не подходит</h2>
+      <p>Ни у кого из кандидатов нет нужных навыков. Попробуй отметить в проекте другие навыки.</p>
+      <a class="btn" href="#project">Изменить проект</a>
+    </div>
+
+    <p class="hint center" id="recs-legend">Чёрные теги — совпало с проектом, розовые — расходится. Данные заполнены самими людьми.</p>
+    <p class="error" id="recs-error" role="alert" hidden></p>
+  </section>
+
+  <!-- ============ Экран 7. Карточка кандидата ============ -->
+  <section class="screen" id="candidate" hidden>
+    <div class="topbar">
+      <a class="back" href="#recs" aria-label="Назад к списку"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></a>
+      <span class="strong">К списку</span>
+    </div>
+
+    <div class="cand-head">
+      <div class="stack-6 grow">
+        <span class="badge">ДЕМО-ПРОФИЛЬ</span>
+        <h1 id="cand-name"></h1>
+        <span class="hint" id="cand-sub"></span>
+      </div>
+      <div id="cand-ring"></div>
+    </div>
+
+    <div class="card">
+      <h2>Из чего сложилось совпадение</h2>
+      <div class="stack-10" id="cand-parts"></div>
+      <p class="hint">Баллы показывают совпадение с твоим проектом, а не оценку человека.</p>
+    </div>
+
+    <div class="card">
+      <h2>Что уже делал(а)</h2>
+      <div id="cand-examples"></div>
+    </div>
+
+    <div class="card">
+      <h2>Как работает</h2>
+      <div class="tags" id="cand-facts"></div>
+    </div>
+
+    <div class="warn">
+      <h2>Что неизвестно</h2>
+      <ul id="cand-unknowns"></ul>
+    </div>
+
+    <button class="btn bottom" type="button" id="cand-prepare">Подготовиться к разговору</button>
   </section>
 
   <!-- ============ Мои данные ============ -->
@@ -284,6 +356,7 @@
 <script src="config.js"></script>
 <script src="src/state.js"></script>
 <script src="src/db.js"></script>
+<script src="src/scoring.js"></script>
 <script src="src/app.js"></script>
 </body>
 </html>
