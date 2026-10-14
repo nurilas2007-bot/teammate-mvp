@@ -391,3 +391,58 @@ h1.hero { font-size: 32px; line-height: 1.05; }
 .steps span { font-size: 15px; color: var(--muted); }
 .pluses { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .pluses li { margin: 0; padding: 12px 14px; border-radius: 14px; background: var(--sky); border: 1.5px solid var(--ink); font-size: 15px; }
+
+/* =====================================================================
+   TEAMDER: логотип и весёлая главная
+   ===================================================================== */
+a.logo { font-size: 20px; letter-spacing: 0.01em; }
+.logo-dot { display: inline-block; width: 10px; height: 10px; margin-left: 4px; border-radius: 50%; background: var(--lime); border: 2px solid var(--ink); }
+
+.slogan { margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 6px 10px; font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: 40px; line-height: 1; letter-spacing: -0.03em; }
+.sticker { display: inline-block; padding: 8px 14px 10px; border: 2.5px solid var(--ink); border-radius: 18px; box-shadow: 5px 5px 0 var(--ink); }
+.s-lime { background: var(--lime); transform: rotate(-3deg); }
+.s-pink { background: #FFB3D9; transform: rotate(2.5deg); }
+.s-sky  { background: #9BD8FF; transform: rotate(-1.5deg); }
+@media (min-width: 400px) { .slogan { font-size: 44px; } }
+
+h1.hero { font-size: 26px; }
+.center-row { justify-content: center; }
+.btn-fun { background: var(--lime); color: var(--ink); border: 2.5px solid var(--ink); box-shadow: 5px 5px 0 var(--ink); font-size: 18px; min-height: 60px; transition: transform 0.08s, box-shadow 0.08s; }
+a.btn.btn-fun, a.btn.btn-fun:hover { color: var(--ink); }
+.btn-fun:active { transform: translate(4px, 4px); box-shadow: 1px 1px 0 var(--ink); }
+
+/* Бегущая лента навыков */
+.marquee { overflow: hidden; margin: 0 -16px; background: var(--ink); border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); transform: rotate(-2deg); }
+.marquee-track { display: flex; gap: 10px; width: max-content; padding: 10px 0; animation: marquee 28s linear infinite; }
+.marquee-track span { color: var(--lime); font-family: 'Unbounded', sans-serif; font-weight: 600; font-size: 14px; white-space: nowrap; padding: 0 6px; }
+.marquee-track span::after { content: "✦"; margin-left: 16px; color: #FFB3D9; }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* Стопка карточек */
+.deck { position: relative; margin: 18px 4px 24px; }
+.deck-back { position: absolute; inset: 0; border: 2px solid var(--ink); border-radius: 20px; }
+.back-1 { background: #9BD8FF; transform: rotate(-5deg) translate(-6px, 8px); }
+.back-2 { background: #FFB3D9; transform: rotate(4deg) translate(6px, 4px); }
+.deck-front { position: relative; }
+.match-sticker { position: absolute; z-index: 2; top: -18px; right: -6px; padding: 6px 12px; border-radius: 999px; background: var(--ink); color: var(--lime); border: 2px solid var(--lime); font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: 15px; transform: rotate(8deg); box-shadow: 3px 3px 0 var(--lime); }
+
+/* Цифры */
+.stat { box-shadow: 4px 4px 0 var(--ink); }
+.stat b { background: none; border: 0; padding: 0; font-size: 34px; letter-spacing: -0.03em; }
+.stat b small { font-size: 15px; font-weight: 600; margin-left: 1px; }
+.st-lime { background: var(--lime); transform: rotate(-1deg); }
+.st-pink { background: #FFB3D9; transform: rotate(0.8deg); }
+.st-sky  { background: #9BD8FF; transform: rotate(-0.6deg); }
+
+.steps li:nth-child(2)::before { background: #FFB3D9; color: var(--ink); border: 2px solid var(--ink); }
+.steps li:nth-child(3)::before { background: var(--lime); color: var(--ink); border: 2px solid var(--ink); }
+.steps li:nth-child(4)::before { background: #9BD8FF; color: var(--ink); border: 2px solid var(--ink); }
+
+.final-cta { display: flex; flex-direction: column; gap: 14px; padding: 22px 16px; border-radius: 22px; background: var(--ink); text-align: center; }
+.final-title { color: #fff; font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: 22px; line-height: 1.15; margin: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track { animation: none; }
+  .btn-fun { transition: none; }
+}
+.home { overflow-x: hidden; overflow-x: clip; }

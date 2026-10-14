@@ -111,7 +111,7 @@ function radioValue(name) {
 function renderHome() {
   const started = Boolean(appState.consentAt);
   for (const id of ["home-start", "home-start-2"]) {
-    $(id).textContent = started ? "Продолжить" : "Найти тиммейтов";
+    $(id).textContent = started ? "Продолжить →" : "Найти тиммейтов →";
     $(id).href = started ? "#" + homeScreen() : "#consent";
   }
   $("home-data").hidden = !started;
@@ -760,7 +760,7 @@ function draftMail(rec) {
   const need = rec.matchedSkills.map(s => s.toLowerCase()).join(", ");
   const subject = "Ищу тиммейта: " + pr.title;
   const body =
-    "Привет! Нашёл(а) тебя на платформе поиска тиммейтов. " +
+    "Привет! Нашёл(а) тебя в TEAMDER — сервисе поиска тиммейтов. " +
     "Делаю проект «" + pr.title + "»" + (pr.course ? " по курсу «" + pr.course + "»" : "") +
     ", дедлайн " + fullDate(pr.deadline) + ". " +
     "Нужен человек, который умеет: " + need + ". " +
