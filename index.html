@@ -1,73 +1,227 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <!-- Кодировка: чтобы русские буквы отображались правильно -->
   <meta charset="UTF-8">
-
-  <!-- Самая важная строка для телефона: страница подстраивается под ширину экрана,
-       а не показывается крошечной копией сайта для компьютера -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <!-- Название во вкладке браузера -->
-  <title>Тиммейты MVP</title>
-
-  <!-- Стили: как страница выглядит. Позже вынесем их в отдельный файл styles.css -->
-  <style>
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      background: #f5f5f7;
-      color: #1d1d1f;
-    }
-    /* Одна колонка по центру: на телефоне во всю ширину,
-       на компьютере выглядит как телефон посередине экрана */
-    main {
-      max-width: 480px;
-      margin: 0 auto;
-      padding: 24px 16px;
-    }
-    .card {
-      background: #ffffff;
-      border-radius: 16px;
-      padding: 20px;
-      margin-bottom: 16px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-    }
-    h1 { font-size: 24px; margin: 0 0 8px; }
-    p  { line-height: 1.5; margin: 8px 0; }
-    .ok { color: #1a7f37; font-weight: 600; }
-    .muted { color: #6e6e73; font-size: 14px; }
-  </style>
+  <title>Поиск тиммейтов — прототип</title>
+  <!-- Шрифты: Unbounded для заголовков, Onest для текста (оба с кириллицей) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@600;800&display=swap">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main>
-    <div class="card">
-      <h1>Привет! 👋</h1>
-      <p>Это прототип платформы поиска тиммейтов.</p>
-      <p class="muted">Шаг 0 — проверка, что сайт открывается по ссылке.</p>
+<main>
+
+  <!-- ============ Экран 1. Согласие ============ -->
+  <section class="screen" id="consent" hidden>
+    <span class="logo">[название]</span>
+    <h1>Найди тиммейтов для учебного проекта</h1>
+    <div class="tags">
+      <span class="tag tag-lime">10–15 минут</span>
+      <span class="tag">прототип студентов MNU</span>
     </div>
 
     <div class="card">
-      <!-- Сюда JavaScript ниже впишет результат проверки.
-           Если видишь текст «JavaScript не запустился», значит скрипт не сработал -->
-      <p id="js-check">JavaScript не запустился</p>
-      <p id="screen-info" class="muted"></p>
+      <h2>Что мы сохраним</h2>
+      <ul>
+        <li>Курс, специальность, навыки и примеры задач</li>
+        <li>Как ты любишь работать и сколько времени свободно</li>
+        <li>Описание твоего проекта</li>
+        <li>Что ты нажимал(а) на сайте, чтобы понять, удобен ли подбор</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>Что не сохраняем</h2>
+      <p>Имя, почту, телефон, оценки и GPA.</p>
+    </div>
+    <div class="card">
+      <h2>Кто увидит и как удалить</h2>
+      <p>Только команда проекта из трёх студентов. В отчёте будут лишь обобщённые выводы. Удалить всё можно в любой момент: «Мои данные» → «Удалить».</p>
+    </div>
+    <div class="note">Все кандидаты на сайте выдуманы для теста. Письма им не отправляются.</div>
+
+    <label class="check">
+      <input type="checkbox" id="consent-check">
+      <span>Я согласен(на), чтобы мои ответы использовались в учебном проекте</span>
+    </label>
+
+    <div class="bottom">
+      <button class="btn" id="consent-start" type="button" disabled>Начать</button>
+      <p class="hint center">Можно закрыть страницу, если не хочешь участвовать</p>
+    </div>
+  </section>
+
+  <!-- ============ Экран 2. Профиль: навыки ============ -->
+  <section class="screen" id="p1" hidden>
+    <div class="topbar">
+      <a class="back" href="#consent" aria-label="Назад"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></a>
+      <div class="progress"><i class="on"></i><i></i><i></i></div>
+      <span class="step-count">1 / 3</span>
+    </div>
+    <h1>Что ты умеешь</h1>
+
+    <div>
+      <span class="label" id="year-label">Курс</span>
+      <div class="segs" id="year" role="group" aria-labelledby="year-label">
+        <button type="button" class="seg" data-value="1" aria-pressed="false">1</button>
+        <button type="button" class="seg" data-value="2" aria-pressed="false">2</button>
+        <button type="button" class="seg" data-value="3" aria-pressed="false">3</button>
+        <button type="button" class="seg" data-value="4" aria-pressed="false">4</button>
+      </div>
     </div>
 
-    <p class="muted">Версия: шаг 0</p>
-  </main>
+    <div>
+      <label class="label" for="major">Специальность</label>
+      <input class="field" id="major" type="text" maxlength="80" placeholder="Например, Финансы" autocomplete="off">
+    </div>
 
-  <!-- JavaScript: «поведение» страницы. Здесь он только проверяет, что работает -->
-  <script>
-    // Находим на странице элемент с id="js-check" и меняем его текст
-    const check = document.getElementById("js-check");
-    check.textContent = "✅ JavaScript работает";
-    check.className = "ok";
+    <div>
+      <span class="label" id="skills-label">Навыки</span>
+      <p class="hint under-label">Выбери до 5</p>
+      <!-- Кнопки навыков создаёт app.js из списка SKILLS в config.js -->
+      <div class="chips" id="skills" role="group" aria-labelledby="skills-label"></div>
+    </div>
 
-    // Показываем ширину экрана, чтобы убедиться, что мобильная вёрстка включилась.
-    // На телефоне должно быть примерно 360–430 пикселей.
-    const info = document.getElementById("screen-info");
-    info.textContent = "Ширина экрана: " + window.innerWidth + " px";
-  </script>
+    <div class="stack-10">
+      <div>
+        <span class="label tight">Примеры задач</span>
+        <p class="hint">Необязательно, до 3. По примерам видно, что человек уже делал, — это говорит больше, чем список навыков.</p>
+      </div>
+      <!-- Карточки примеров добавляет app.js -->
+      <div class="stack-10" id="examples"></div>
+      <button type="button" class="add" id="add-example">+ Добавить пример</button>
+    </div>
+
+    <p class="error" id="p1-error" role="alert" hidden></p>
+    <button class="btn bottom" type="button" id="p1-next">Дальше</button>
+  </section>
+
+  <!-- ============ Экран 3. Профиль: как работаю ============ -->
+  <section class="screen" id="p2" hidden>
+    <div class="topbar">
+      <a class="back" href="#p1" aria-label="Назад"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></a>
+      <div class="progress"><i class="on"></i><i class="on"></i><i></i></div>
+      <span class="step-count">2 / 3</span>
+    </div>
+    <h1>Как ты работаешь в команде</h1>
+
+    <div>
+      <span class="label" id="roles-label">Какие роли тебе ближе</span>
+      <div class="chips" id="roles" role="group" aria-labelledby="roles-label"></div>
+    </div>
+
+    <fieldset>
+      <legend class="label">Когда обычно делаешь свою часть</legend>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="work_rhythm" value="gradually">Понемногу, начиная заранее</label>
+        <label class="opt"><input type="radio" name="work_rhythm" value="near_deadline">Ближе к дедлайну</label>
+        <label class="opt"><input type="radio" name="work_rhythm" value="mixed">По-разному</label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend class="label">Как удобнее общаться</legend>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="comm_pref" value="messages">Сообщения</label>
+        <label class="opt"><input type="radio" name="comm_pref" value="calls">Созвоны</label>
+        <label class="opt"><input type="radio" name="comm_pref" value="both">И то, и другое</label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend class="label">Показываешь черновики до дедлайна?</legend>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="shares_drafts" value="true">Да, готов(а) обсуждать промежуточный результат</label>
+        <label class="opt"><input type="radio" name="shares_drafts" value="false">Обычно показываю готовое</label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend class="label">Твоя цель в проекте</legend>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="goal" value="max_grade">Максимальная оценка</label>
+        <label class="opt"><input type="radio" name="goal" value="solid_pass">Уверенно сдать</label>
+        <label class="opt"><input type="radio" name="goal" value="learn_skill">Научиться новому</label>
+      </div>
+    </fieldset>
+
+    <p class="error" id="p2-error" role="alert" hidden></p>
+    <button class="btn bottom" type="button" id="p2-next">Дальше</button>
+  </section>
+
+  <!-- ============ Экран 4. Профиль: доступность ============ -->
+  <section class="screen" id="p3" hidden>
+    <div class="topbar">
+      <a class="back" href="#p2" aria-label="Назад"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></a>
+      <div class="progress"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+      <span class="step-count">3 / 3</span>
+    </div>
+    <h1>Сколько у тебя времени</h1>
+
+    <div>
+      <span class="label" id="hours-label">Часов в неделю на проект</span>
+      <div class="stepper" role="group" aria-labelledby="hours-label">
+        <button type="button" class="step" id="hours-minus" aria-label="Меньше">−</button>
+        <output class="step-value" id="hours" aria-live="polite">5</output>
+        <button type="button" class="step" id="hours-plus" aria-label="Больше">+</button>
+      </div>
+    </div>
+
+    <div>
+      <label class="label" for="until">Свободен(на) до</label>
+      <input class="field" id="until" type="date">
+      <p class="hint">Например, до конца семестра или до начала сессии</p>
+    </div>
+
+    <div class="note">Контакт на этом этапе не нужен: твой профиль не увидит никто, кроме команды проекта.</div>
+
+    <p class="error" id="p3-error" role="alert" hidden></p>
+    <button class="btn bottom" type="button" id="p3-save">Сохранить профиль</button>
+  </section>
+
+  <!-- ============ Временный экран: профиль сохранён ============ -->
+  <!-- На шаге 4 здесь появится экран «Опиши свой проект» -->
+  <section class="screen" id="saved" hidden>
+    <div class="topbar spread">
+      <span class="logo">[название]</span>
+      <a class="link" href="#data">Мои данные</a>
+    </div>
+    <span class="tag tag-lime self-start">Профиль сохранён</span>
+    <h1>Готово! Дальше — твой проект</h1>
+    <p>Экран с описанием проекта появится на следующем шаге разработки.</p>
+    <button class="btn-outline" type="button" id="edit-profile">Изменить профиль</button>
+  </section>
+
+  <!-- ============ Мои данные ============ -->
+  <section class="screen" id="data" hidden>
+    <div class="topbar">
+      <a class="back" href="#saved" id="data-back" aria-label="Назад"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></a>
+    </div>
+    <h1>Мои данные</h1>
+    <div class="card">
+      <h2>Что сохранено с этого устройства</h2>
+      <ul id="data-list"></ul>
+      <p class="hint">Имени, почты и телефона у нас нет. Тебя узнаёт только случайный номер этого устройства.</p>
+    </div>
+    <div class="card card-pink">
+      <h2>Удалить всё</h2>
+      <p>Сотрём профиль, проект и все действия с этого устройства. Отменить нельзя.</p>
+      <button class="btn-danger" type="button" id="delete-data">Удалить мои данные</button>
+    </div>
+    <p class="error" id="data-error" role="alert" hidden></p>
+    <p class="hint">Вопросы о данных: напиши команде проекта — [КОНТАКТ КОМАНДЫ]</p>
+  </section>
+
+</main>
+
+<!-- Всплывающее сообщение внизу экрана -->
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<!-- Порядок важен: сначала настройки, потом код, который их использует -->
+<script src="config.js"></script>
+<script src="src/state.js"></script>
+<script src="src/db.js"></script>
+<script src="src/app.js"></script>
 </body>
 </html>
