@@ -4,7 +4,7 @@
 // =====================================================================
 
 // Supabase → Project Settings → Data API (или API) → Project URL
-const SUPABASE_URL = "sb_publishable_at93cb8R9-4_jaQFsILD7A_1ZU_Wo6A";
+const SUPABASE_URL = "https://eyvmkvxpgcmxtyepwadl.supabase.co/rest/v1/";
 
 // Supabase → Project Settings → API Keys → Publishable key
 // (в старом интерфейсе он называется «anon public»).
