@@ -221,6 +221,18 @@ fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
 }
 .add[hidden] { display: none; }
 .stack-10 { display: flex; flex-direction: column; gap: 10px; }
+.stack-6 { display: flex; flex-direction: column; gap: 6px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.push-right { margin-left: auto; }
+
+/* Ссылка-кнопка «Показать все навыки» */
+.more {
+  min-height: 44px; margin-top: 6px; padding: 0;
+  background: none; border: 0; color: var(--ink);
+  font: inherit; font-size: 15px; font-weight: 700;
+  text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.more[hidden], .chip[hidden] { display: none; }
 
 /* ---------- Кнопки ---------- */
 .bottom { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }

@@ -15,21 +15,31 @@ const MAX_HOURS = 40;
 // Короткая запись для поиска элемента по id
 const $ = (id) => document.getElementById(id);
 
-// Когда тестер открыл первый экран профиля — чтобы посчитать время заполнения
+// Когда тестер открыл первый экран профиля и экран проекта —
+// чтобы посчитать время заполнения
 let profileStartedAt = null;
+let projectStartedAt = null;
 
 // ---------------------------------------------------------------------
 // 1. Переходы между экранами
 // ---------------------------------------------------------------------
-const SCREENS = ["consent", "p1", "p2", "p3", "saved", "data"];
+const SCREENS = ["consent", "p1", "p2", "p3", "project", "ready", "data"];
+
+// «Домашний» экран: куда вести человека в зависимости от того, что он уже заполнил
+function homeScreen() {
+  if (!appState.profileSavedAt) return "p1";
+  if (!appState.projectSavedAt) return "project";
+  return "ready";
+}
 
 // Куда пускать, если человек открыл неподходящий экран
 function allowedScreen(wanted) {
-  if (!appState.consentAt) return "consent";               // без согласия — только согласие
-  if (wanted === "consent") return appState.profileSavedAt ? "saved" : "p1";
-  if (wanted === "saved" && !appState.profileSavedAt) return "p1";
+  if (!appState.consentAt) return "consent";                         // без согласия — только согласие
+  if (wanted === "consent") return homeScreen();
+  if (wanted === "project" && !appState.profileSavedAt) return "p1";  // проект — только после профиля
+  if (wanted === "ready" && !appState.projectSavedAt) return homeScreen();
   if (SCREENS.includes(wanted)) return wanted;
-  return appState.profileSavedAt ? "saved" : "p1";         // пустой или неизвестный адрес
+  return homeScreen();                                               // пустой или неизвестный адрес
 }
 
 function showScreen() {
@@ -42,6 +52,11 @@ function showScreen() {
   window.scrollTo(0, 0);
 
   if (screen === "p1" && !profileStartedAt) profileStartedAt = Date.now();
+  if (screen === "project") {
+    if (!projectStartedAt) projectStartedAt = Date.now();
+    renderProjectHint();
+  }
+  if (screen === "ready") $("ready-title").textContent = "Готово! Проект «" + appState.project.title + "» сохранён";
   if (screen === "data") renderDataScreen();
 }
 
@@ -261,7 +276,7 @@ $("p3-save").addEventListener("click", async () => {
       fill_seconds: profileStartedAt ? Math.round((Date.now() - profileStartedAt) / 1000) : null
     });
     profileStartedAt = null;
-    goTo("saved");
+    goTo("project");
   } catch (e) {
     console.error(e);
     showError("p3-error", "Не получилось сохранить. Проверь интернет и нажми ещё раз. (" + e.message + ")");
@@ -290,10 +305,126 @@ function fillFormsFromProfile(p) {
   $("until").value = p.available_until;
 }
 
-$("edit-profile").addEventListener("click", () => goTo("p1"));
+// ---------------------------------------------------------------------
+// 7. Проект: что нужно команде
+// ---------------------------------------------------------------------
+const SKILLS_VISIBLE = 6;   // сколько навыков видно до «Показать все навыки»
+
+buildChips("pr-skills", SKILLS, MAX_SKILLS);
+buildChips("pr-roles", ROLES, null);
+
+// Показываем первые 6 навыков (и все уже выбранные), остальные — по кнопке
+function collapseProjectSkills() {
+  const chips = $("pr-skills").querySelectorAll(".chip");
+  chips.forEach((chip, i) => {
+    chip.hidden = i >= SKILLS_VISIBLE && chip.getAttribute("aria-pressed") !== "true";
+  });
+  $("pr-skills-more").hidden = ![...chips].some(c => c.hidden);
+}
+$("pr-skills-more").addEventListener("click", () => {
+  for (const chip of $("pr-skills").querySelectorAll(".chip")) chip.hidden = false;
+  $("pr-skills-more").hidden = true;
+});
+
+$("pr-deadline").min = todayISO();
+
+// Подпись внизу экрана: ритм и цель берём из профиля, а не спрашиваем ещё раз
+const RHYTHM_TEXT = { gradually: "понемногу, заранее", near_deadline: "ближе к дедлайну", mixed: "по-разному" };
+const GOAL_TEXT = { max_grade: "максимальная оценка", solid_pass: "уверенно сдать", learn_skill: "научиться новому" };
+function renderProjectHint() {
+  const p = appState.profile;
+  if (!p) return;
+  $("pr-from-profile").textContent = "Ритм работы и цель возьмём из твоего профиля: " +
+    RHYTHM_TEXT[p.work_rhythm] + ", " + GOAL_TEXT[p.goal] + ".";
+}
+
+// Целое число из поля, или null, если введено не число
+function intFromField(id) {
+  const value = $(id).value.trim();
+  return /^\d+$/.test(value) ? Number(value) : null;
+}
+
+// Названия полей совпадают с колонками таблицы projects в базе
+function collectProject() {
+  return {
+    title: $("pr-title").value.trim(),
+    course: $("pr-course").value.trim() || null,
+    description: $("pr-desc").value.trim() || null,
+    needed_skills: pressedValues("pr-skills"),
+    needed_roles: pressedValues("pr-roles"),
+    team_size: intFromField("pr-size"),
+    deadline: $("pr-deadline").value,
+    desired_rhythm: appState.profile.work_rhythm,
+    desired_goal: appState.profile.goal,
+    min_hours_per_week: intFromField("pr-hours")
+  };
+}
+
+// Проверка. Возвращает текст ошибки или пустую строку, если всё в порядке.
+function validateProject(pr) {
+  if (!pr.title) return "Напиши название проекта";
+  if (pr.needed_skills.length === 0) return "Выбери хотя бы один навык, которого не хватает команде";
+  if (pr.needed_roles.length === 0) return "Выбери хотя бы одну роль";
+  if (!pr.deadline) return "Укажи дедлайн";
+  if (pr.deadline < todayISO()) return "Дедлайн не может быть в прошлом";
+  if (pr.min_hours_per_week === null || pr.min_hours_per_week < 1 || pr.min_hours_per_week > 40) return "Часов в неделю: число от 1 до 40";
+  if (pr.team_size === null || pr.team_size < 2 || pr.team_size > 15) return "Размер команды: число от 2 до 15";
+  return "";
+}
+
+$("pr-save").addEventListener("click", async () => {
+  const project = collectProject();
+  const problem = validateProject(project);
+  if (problem) return showError("pr-error", problem);
+  showError("pr-error", "");
+
+  const button = $("pr-save");
+  button.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  button.textContent = "Сохраняю…";
+
+  try {
+    await dbInsert("projects", Object.assign({ session_id: appState.sessionId }, project));
+
+    const version = (appState.projectVersion || 0) + 1;
+    updateState({ project: project, projectSavedAt: new Date().toISOString(), projectVersion: version });
+    logEvent("project_created", {
+      version: version,
+      skills_count: project.needed_skills.length,
+      roles_count: project.needed_roles.length,
+      fill_seconds: projectStartedAt ? Math.round((Date.now() - projectStartedAt) / 1000) : null
+    });
+    projectStartedAt = null;
+    goTo("ready");
+  } catch (e) {
+    console.error(e);
+    showError("pr-error", "Не получилось сохранить. Проверь интернет и нажми ещё раз. (" + e.message + ")");
+  } finally {
+    button.disabled = false;
+    button.removeAttribute("aria-busy");
+    button.textContent = "Найти тиммейтов";
+  }
+});
+
+// Если проект уже есть — заполняем им форму (для «Изменить проект»)
+function fillProjectForm(pr) {
+  if (pr) {
+    $("pr-title").value = pr.title;
+    $("pr-course").value = pr.course || "";
+    $("pr-desc").value = pr.description || "";
+    for (const b of $("pr-skills").querySelectorAll(".chip")) b.setAttribute("aria-pressed", String(pr.needed_skills.includes(b.dataset.value)));
+    for (const b of $("pr-roles").querySelectorAll(".chip")) b.setAttribute("aria-pressed", String(pr.needed_roles.includes(b.dataset.value)));
+    $("pr-deadline").value = pr.deadline;
+    $("pr-hours").value = pr.min_hours_per_week;
+    $("pr-size").value = pr.team_size;
+  }
+  collapseProjectSkills();
+}
+
+$("edit-project").addEventListener("click", () => goTo("project"));
 
 // ---------------------------------------------------------------------
-// 7. Мои данные и удаление
+// 8. Мои данные и удаление
 // ---------------------------------------------------------------------
 function renderDataScreen() {
   const list = $("data-list");
@@ -306,13 +437,16 @@ function renderDataScreen() {
   } else {
     lines.push("Профиля пока нет");
   }
+  if (appState.project && appState.projectSavedAt) {
+    lines.push("Проект «" + appState.project.title + "»");
+  }
   lines.push("Отметка о согласии и твои действия на сайте");
   for (const text of lines) {
     const li = document.createElement("li");
     li.textContent = text;
     list.appendChild(li);
   }
-  $("data-back").href = appState.profileSavedAt ? "#saved" : "#p1";
+  $("data-back").href = "#" + homeScreen();
   showError("data-error", "");
 }
 
@@ -340,9 +474,10 @@ $("delete-data").addEventListener("click", async () => {
 });
 
 // ---------------------------------------------------------------------
-// 8. Запуск
+// 9. Запуск
 // ---------------------------------------------------------------------
 fillFormsFromProfile(appState.profile);
+fillProjectForm(appState.project);
 if (appState.consentAt) logEvent("session_started");
 window.addEventListener("hashchange", showScreen);
 showScreen();

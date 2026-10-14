@@ -180,23 +180,85 @@
     <button class="btn bottom" type="button" id="p3-save">Сохранить профиль</button>
   </section>
 
-  <!-- ============ Временный экран: профиль сохранён ============ -->
-  <!-- На шаге 4 здесь появится экран «Опиши свой проект» -->
-  <section class="screen" id="saved" hidden>
+  <!-- ============ Экран 5. Проект ============ -->
+  <section class="screen" id="project" hidden>
+    <div class="topbar">
+      <a class="back" href="#p3" aria-label="Назад к профилю"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></a>
+      <span class="tag tag-lime">Профиль сохранён</span>
+      <a class="link push-right" href="#data">Мои данные</a>
+    </div>
+
+    <div class="stack-6">
+      <h1>Для какого проекта ищешь людей</h1>
+      <p class="hint">По этому описанию мы подберём кандидатов</p>
+    </div>
+
+    <div>
+      <label class="label" for="pr-title">Название</label>
+      <input class="field" id="pr-title" type="text" maxlength="120" placeholder="Например, Финансовый анализ компании" autocomplete="off">
+    </div>
+
+    <div>
+      <label class="label" for="pr-course">Курс (предмет)</label>
+      <input class="field" id="pr-course" type="text" maxlength="120" placeholder="Например, Корпоративные финансы" autocomplete="off">
+    </div>
+
+    <div>
+      <label class="label" for="pr-desc">Что нужно сделать</label>
+      <textarea class="field" id="pr-desc" rows="3" maxlength="1000" placeholder="Коротко: задача и что нужно сдать в конце"></textarea>
+    </div>
+
+    <div>
+      <span class="label" id="pr-skills-label">Каких навыков не хватает</span>
+      <!-- Кнопки создаёт app.js из списка SKILLS в config.js -->
+      <div class="chips" id="pr-skills" role="group" aria-labelledby="pr-skills-label"></div>
+      <button type="button" class="more" id="pr-skills-more">Показать все навыки</button>
+    </div>
+
+    <div>
+      <span class="label" id="pr-roles-label">Какие роли нужны</span>
+      <div class="chips" id="pr-roles" role="group" aria-labelledby="pr-roles-label"></div>
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <label class="label" for="pr-deadline">Дедлайн</label>
+        <input class="field" id="pr-deadline" type="date">
+      </div>
+      <div>
+        <label class="label" for="pr-hours">Часов в неделю</label>
+        <input class="field" id="pr-hours" type="number" inputmode="numeric" min="1" max="40" value="5">
+      </div>
+    </div>
+
+    <div>
+      <label class="label" for="pr-size">Сколько человек в команде</label>
+      <input class="field" id="pr-size" type="number" inputmode="numeric" min="2" max="15" value="4">
+    </div>
+
+    <p class="hint" id="pr-from-profile"></p>
+
+    <p class="error" id="pr-error" role="alert" hidden></p>
+    <button class="btn bottom" type="button" id="pr-save">Найти тиммейтов</button>
+  </section>
+
+  <!-- ============ Временный экран: проект сохранён ============ -->
+  <!-- На шаге 5 здесь появятся рекомендации кандидатов -->
+  <section class="screen" id="ready" hidden>
     <div class="topbar spread">
       <span class="logo">[название]</span>
       <a class="link" href="#data">Мои данные</a>
     </div>
-    <span class="tag tag-lime self-start">Профиль сохранён</span>
-    <h1>Готово! Дальше — твой проект</h1>
-    <p>Экран с описанием проекта появится на следующем шаге разработки.</p>
-    <button class="btn-outline" type="button" id="edit-profile">Изменить профиль</button>
+    <span class="tag tag-lime self-start">Проект сохранён</span>
+    <h1 id="ready-title">Готово!</h1>
+    <p>Подбор кандидатов появится на следующем шаге разработки.</p>
+    <button class="btn-outline" type="button" id="edit-project">Изменить проект</button>
   </section>
 
   <!-- ============ Мои данные ============ -->
   <section class="screen" id="data" hidden>
     <div class="topbar">
-      <a class="back" href="#saved" id="data-back" aria-label="Назад"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></a>
+      <a class="back" href="#project" id="data-back" aria-label="Назад"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></a>
     </div>
     <h1>Мои данные</h1>
     <div class="card">
