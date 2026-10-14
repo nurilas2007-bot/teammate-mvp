@@ -300,6 +300,35 @@ a.go:hover { color: var(--lime); }
 .warn { background: var(--pink); border: 2px solid var(--ink); border-radius: 20px; padding: 16px; }
 .warn ul { display: flex; flex-direction: column; gap: 6px; }
 
+/* =====================================================================
+   Шаг 6: чек-лист, письмо и окно для демо-кандидата
+   ===================================================================== */
+a.btn { color: var(--lime); }
+.card-sky { background: var(--sky); }
+.k { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; display: block; }
+.checklist { padding-top: 6px; padding-bottom: 6px; gap: 0; }
+.item { display: flex; gap: 12px; align-items: flex-start; min-height: 44px; padding: 10px 0; border-top: 1.5px dashed var(--ink); cursor: pointer; }
+.item:first-child { border-top: 0; }
+.item input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--ink); flex-shrink: 0; }
+
+/* Нижняя шторка (bottom sheet) поверх экрана */
+.sheet {
+  margin: auto auto 0; width: 100%; max-width: 480px;
+  border: 0; border-top: 2px solid var(--ink);
+  border-radius: 28px 28px 0 0;
+  padding: 12px 16px 28px;
+  background: #fff; color: var(--ink);
+}
+.sheet[open] { display: flex; flex-direction: column; gap: 14px; }
+.sheet::backdrop { background: rgba(14, 14, 16, 0.6); }
+.sheet-handle { width: 44px; height: 5px; border-radius: 3px; background: var(--ink); align-self: center; }
+.sheet h1 { font-size: 24px; }
+.link-button {
+  min-height: 44px; background: none; border: 0; color: var(--ink);
+  font: inherit; font-weight: 700; font-size: 15px;
+  text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+
 /* ---------- Кнопки ---------- */
 .bottom { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
 .btn, .btn-outline, .btn-danger {

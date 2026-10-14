@@ -324,7 +324,51 @@
       <ul id="cand-unknowns"></ul>
     </div>
 
-    <button class="btn bottom" type="button" id="cand-prepare">Подготовиться к разговору</button>
+    <a class="btn bottom" id="cand-prepare" href="#recs">Подготовиться к разговору</a>
+  </section>
+
+  <!-- ============ Экран 8. Чек-лист и письмо ============ -->
+  <section class="screen" id="talk" hidden>
+    <div class="topbar">
+      <a class="back" id="talk-back" href="#recs" aria-label="Назад к профилю"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></a>
+      <span class="strong" id="talk-name"></span>
+    </div>
+
+    <div class="stack-6">
+      <h1>Что обсудить в первом разговоре</h1>
+      <p class="hint">Пункты основаны на интервью со студентами MNU о прошлых групповых проектах</p>
+    </div>
+
+    <!-- Пункты чек-листа. Отметки — только для тебя, мы сохраняем лишь их количество -->
+    <div class="card checklist" id="checklist">
+      <label class="item"><input type="checkbox"><span>Кто какую роль берёт и кто собирает итоговую работу</span></label>
+      <label class="item"><input type="checkbox"><span>Общая идея и источники данных — до того, как делить задачи</span></label>
+      <label class="item"><input type="checkbox"><span>Промежуточный срок для черновиков, а не только финальный дедлайн</span></label>
+      <label class="item"><input type="checkbox"><span>Где общаемся и как быстро отвечаем</span></label>
+      <label class="item"><input type="checkbox"><span>Как правим общую работу: сначала обсуждаем, потом меняем чужой текст</span></label>
+      <label class="item"><input type="checkbox"><span>Что делаем, если кто-то не успевает: предупреждаем заранее</span></label>
+    </div>
+
+    <div class="card card-sky">
+      <h2>Письмо на студенческую почту</h2>
+      <div>
+        <div class="k">Кому</div>
+        <div id="mail-to"></div>
+      </div>
+      <div>
+        <div class="k">Тема</div>
+        <div id="mail-subject"></div>
+      </div>
+      <div>
+        <label class="k" for="mail-body">Текст — можно изменить</label>
+        <textarea class="field" id="mail-body" rows="6" maxlength="1500"></textarea>
+      </div>
+    </div>
+
+    <div class="bottom">
+      <button class="btn" type="button" id="mail-app">Написать письмо</button>
+      <button class="btn-outline" type="button" id="mail-web">Открыть Outlook в браузере</button>
+    </div>
   </section>
 
   <!-- ============ Мои данные ============ -->
@@ -348,6 +392,16 @@
   </section>
 
 </main>
+
+<!-- Окно после «Написать» для демо-кандидата -->
+<dialog class="sheet" id="demo-dialog" aria-labelledby="demo-title">
+  <div class="sheet-handle" aria-hidden="true"></div>
+  <span class="badge">ДЕМО-ПРОФИЛЬ</span>
+  <h1 id="demo-title">Письмо не отправится</h1>
+  <p id="demo-text"></p>
+  <button class="btn" type="button" id="demo-back">Вернуться к списку</button>
+  <button class="link-button" type="button" id="demo-stay">Остаться здесь</button>
+</dialog>
 
 <!-- Всплывающее сообщение внизу экрана -->
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>

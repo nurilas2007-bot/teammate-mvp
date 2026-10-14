@@ -23,7 +23,7 @@ let projectStartedAt = null;
 // ---------------------------------------------------------------------
 // 1. Переходы между экранами
 // ---------------------------------------------------------------------
-const SCREENS = ["consent", "p1", "p2", "p3", "project", "recs", "candidate", "data"];
+const SCREENS = ["consent", "p1", "p2", "p3", "project", "recs", "candidate", "talk", "data"];
 
 // «Домашний» экран: куда вести человека в зависимости от того, что он уже заполнил
 function homeScreen() {
@@ -37,7 +37,7 @@ function allowedScreen(wanted) {
   if (!appState.consentAt) return "consent";                         // без согласия — только согласие
   if (wanted === "consent") return homeScreen();
   if (wanted === "project" && !appState.profileSavedAt) return "p1";  // проект — только после профиля
-  if ((wanted === "recs" || wanted === "candidate") && !appState.projectSavedAt) return homeScreen();
+  if (["recs", "candidate", "talk"].includes(wanted) && !appState.projectSavedAt) return homeScreen();
   if (SCREENS.includes(wanted)) return wanted;
   return homeScreen();                                               // пустой или неизвестный адрес
 }
@@ -59,6 +59,7 @@ function showScreen() {
   }
   if (screen === "recs") renderRecs();
   if (screen === "candidate") renderCandidate(param);
+  if (screen === "talk") renderTalk(param);
   if (screen === "data") renderDataScreen();
 }
 
@@ -614,15 +615,111 @@ async function renderCandidate(id) {
   unknowns.innerHTML = "";
   for (const u of rec.unknowns) unknowns.appendChild(el("li", "", u));
 
+  $("cand-prepare").href = "#talk/" + c.id;
   logEvent("candidate_opened", { position: position + 1, score: rec.total }, c.id);
 }
 
-$("cand-prepare").addEventListener("click", () => {
-  toast("Чек-лист для разговора появится на следующем шаге");
-});
+// ---------------------------------------------------------------------
+// 9. Чек-лист и письмо кандидату
+// ---------------------------------------------------------------------
+let talkRec = null;          // кому пишем сейчас
+let talkDefaultBody = "";    // исходный текст письма — чтобы понять, правил ли его тестер
+
+// "2026-12-10" → "10.12.2026"
+function fullDate(iso) {
+  const p = iso.split("-");
+  return p[2] + "." + p[1] + "." + p[0];
+}
+
+// Черновик письма из данных проекта и того, что у кандидата совпало
+function draftMail(rec) {
+  const pr = appState.project;
+  const need = rec.matchedSkills.map(s => s.toLowerCase()).join(", ");
+  const subject = "Ищу тиммейта: " + pr.title;
+  const body =
+    "Привет! Нашёл(а) тебя на платформе поиска тиммейтов. " +
+    "Делаю проект «" + pr.title + "»" + (pr.course ? " по курсу «" + pr.course + "»" : "") +
+    ", дедлайн " + fullDate(pr.deadline) + ". " +
+    "Нужен человек, который умеет: " + need + ". " +
+    "Есть время коротко списаться или созвониться на этой неделе?";
+  return { subject: subject, body: body };
+}
+
+// Ссылки, которые открывают готовое письмо.
+// mailto: — почтовое приложение телефона (в том числе Outlook).
+// outlook.office.com — Outlook в браузере для университетских аккаунтов.
+// На этапе A не используются: у демо-кандидатов нет настоящих адресов.
+function mailLinks(to, subject, body) {
+  const q = "subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+  return {
+    app: "mailto:" + encodeURIComponent(to) + "?" + q,
+    web: "https://outlook.office.com/mail/deeplink/compose?to=" + encodeURIComponent(to) + "&" + q
+  };
+}
+
+async function renderTalk(id) {
+  if (!currentRecs.length) {
+    try { await computeRecs(); } catch (e) { return goTo("recs"); }
+  }
+  const rec = currentRecs.find(r => r.candidate.id === id);
+  if (!rec) return goTo("recs");
+  const c = rec.candidate;
+
+  // Новый кандидат — чистый чек-лист и свежий черновик письма
+  if (!talkRec || talkRec.candidate.id !== id) {
+    for (const box of $("checklist").querySelectorAll("input")) box.checked = false;
+    const mail = draftMail(rec);
+    talkDefaultBody = mail.body;
+    $("mail-subject").textContent = mail.subject;
+    $("mail-body").value = mail.body;
+  }
+  talkRec = rec;
+  $("talk-name").textContent = c.name;
+  $("talk-back").href = "#candidate/" + c.id;
+  $("mail-to").textContent = c.contact.value;
+  logEvent("checklist_viewed", {}, c.id);
+}
+
+async function contactClicked(channel) {
+  const c = talkRec.candidate;
+  const body = $("mail-body").value.trim();
+  await logEvent("contact_clicked", {
+    channel: channel,                                                      // "mail_app" или "outlook_web"
+    checked_items: $("checklist").querySelectorAll("input:checked").length,
+    text_edited: body !== talkDefaultBody,
+    is_synthetic: c.is_synthetic === true,
+    score: talkRec.total
+  }, c.id);
+
+  if (c.is_synthetic) {
+    // Демо-кандидат: письмо не открываем, объясняем почему
+    $("demo-text").textContent = c.name + " — демо-профиль, такого человека нет, поэтому письмо не отправится. " +
+      "Твой выбор мы засчитали — спасибо!";
+    openDialog($("demo-dialog"));
+    return;
+  }
+  const links = mailLinks(c.contact.value, $("mail-subject").textContent, body);
+  if (channel === "mail_app") location.href = links.app;
+  else window.open(links.web, "_blank", "noopener");
+}
+
+$("mail-app").addEventListener("click", () => contactClicked("mail_app"));
+$("mail-web").addEventListener("click", () => contactClicked("outlook_web"));
+
+// Окно поверх экрана. Старые браузеры без showModal просто покажут его.
+function openDialog(d) {
+  if (typeof d.showModal === "function") d.showModal();
+  else d.setAttribute("open", "");
+}
+function closeDialog(d) {
+  if (typeof d.close === "function") d.close();
+  else d.removeAttribute("open");
+}
+$("demo-back").addEventListener("click", () => { closeDialog($("demo-dialog")); goTo("recs"); });
+$("demo-stay").addEventListener("click", () => closeDialog($("demo-dialog")));
 
 // ---------------------------------------------------------------------
-// 9. Мои данные и удаление
+// 10. Мои данные и удаление
 // ---------------------------------------------------------------------
 function renderDataScreen() {
   const list = $("data-list");
@@ -672,7 +769,7 @@ $("delete-data").addEventListener("click", async () => {
 });
 
 // ---------------------------------------------------------------------
-// 10. Запуск
+// 11. Запуск
 // ---------------------------------------------------------------------
 fillFormsFromProfile(appState.profile);
 fillProjectForm(appState.project);
